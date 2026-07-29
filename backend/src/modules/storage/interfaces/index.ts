@@ -1,0 +1,2 @@
+// storage interfaces index
+export {};

@@ -1,0 +1,2 @@
+// storage constants index
+export {};

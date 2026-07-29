@@ -11,6 +11,12 @@ const config: Config = {
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        emerald: {
+          400: "#00d26a",
+          500: "#00d26a",
+          600: "#00b25a",
+          700: "#00964c",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -31,6 +37,8 @@ const config: Config = {
         ring: "hsl(var(--ring))",
       },
       fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        mono: ['Inter', 'sans-serif'],
         display: ['var(--font-display)'],
         body: ['var(--font-body)'],
       },

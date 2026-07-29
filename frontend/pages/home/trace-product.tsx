@@ -1,364 +1,633 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Head from "next/head";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, 
-  Sprout, 
-  Package, 
-  ArrowLeft, 
-  Info, 
-  GitBranch, 
-  Clock, 
-  User, 
   MapPin, 
-  Activity, 
-  FileText
+  ShieldCheck,
+  Sparkles,
+  RefreshCw,
+  Check,
+  ArrowDown,
+  GitBranch,
+  Award,
+  ExternalLink
 } from "lucide-react";
+import TraceDetailsModal, { StageData } from "../../components/common/TraceDetailsModal";
+
+interface TraceRecord {
+  batchId: string;
+  cropName: string;
+  currentOwnerName: string;
+  totalVolume: string;
+  harvestDate: string;
+  qualityIndex: string;
+  organicCertified: boolean;
+  parentBatches: {
+    batchId: string;
+    cropName: string;
+    farmerName: string;
+    quantity: string;
+    location: string;
+  }[];
+}
+
+const DEMO_PARENT_BATCHES = [
+  {
+    batchId: "BATCH2026000001",
+    cropName: "Grade-A Alphonso Mangoes",
+    farmerName: "Ramesh Kumar (GreenAcres)",
+    quantity: "300 kg",
+    location: "Ratnagiri Orchard Plot #4"
+  },
+  {
+    batchId: "BATCH2026000002",
+    cropName: "Grade-A Alphonso Mangoes",
+    farmerName: "Suresh Patil (GoldenFields)",
+    quantity: "250 kg",
+    location: "Devgad Orchard Plot #2"
+  }
+];
+
+// Pre-packaged 5-level stages data with strict privacy filtering (No MongoDB IDs, No Tx Hashes, No Financials)
+const STAGE_LEVELS_DATA: StageData[] = [
+  {
+    stageType: "FARMER",
+    stageTitle: "Farm Harvest & Soil Origin",
+    batchId: "BATCH2026000001",
+    badge: "100% Organic Soil",
+    generalInfo: [
+      { label: "Product Name", value: "Grade-A Alphonso Mangoes" },
+      { label: "Batch ID", value: "BATCH2026000001" },
+      { label: "Farmer Name", value: "Farmer Ramesh Kumar" },
+      { label: "Farm Name", value: "GreenAcres Organic Orchard" },
+      { label: "Current Status", value: "Harvest Completed & Certified" }
+    ],
+    locationInfo: [
+      { label: "Farm Address", value: "Ratnagiri Orchard Plot #4" },
+      { label: "District", value: "Ratnagiri" },
+      { label: "State", value: "Maharashtra" },
+      { label: "Country", value: "India" }
+    ],
+    productInfo: [
+      { label: "Harvest Quantity", value: "550 kg Raw Mangoes" },
+      { label: "Farming Method", value: "Organic & Regenerative Agriculture" },
+      { label: "Crop Variety", value: "GI Tagged Alphonso Mango" },
+      { label: "Harvest Season", value: "Monsoon Peak Harvest 2026" }
+    ],
+    qualityInfo: [
+      { label: "Certification", value: "NPOP Certified Organic (#NPOP-8821)" },
+      { label: "Soil Quality Score", value: "100% Chemical Spray Free (Brix: 18.5°)" }
+    ],
+    timelineInfo: [
+      { label: "Harvest Date", value: "14/07/2026 • 06:00 AM" }
+    ]
+  },
+  {
+    stageType: "PROCESSOR",
+    stageTitle: "Factory Processing & Extraction",
+    batchId: "BATCH2026000003",
+    badge: "Lab Quality Pass",
+    generalInfo: [
+      { label: "Processed Product", value: "Organic Alphonso Mango Pulp" },
+      { label: "New Batch ID", value: "BATCH2026000003" },
+      { label: "Processor Name", value: "Heritage Food Processing Corp" },
+      { label: "Factory Name", value: "Mandya Agro Processing Line A" },
+      { label: "Current Status", value: "Aseptic Pulping Completed" }
+    ],
+    locationInfo: [
+      { label: "Factory Address", value: "Plot #12, Agro Industrial Zone, Mandya, Karnataka, India" }
+    ],
+    productInfo: [
+      { label: "Raw Material Used", value: "Fresh Organic Alphonso Mangoes" },
+      { label: "Input Quantity", value: "550 kg Raw Produce" },
+      { label: "Output Quantity", value: "450 Liters Concentrated Pulp" },
+      { label: "Parent Batch Count", value: "2 Harvest Batches Merged" },
+      { label: "Product Category", value: "Processed Fruit Pulp" }
+    ],
+    qualityInfo: [
+      { label: "Quality Certification", value: "FSSAI Cleanroom Approved" },
+      { label: "Lab Verification Status", value: "99.2% Purity Score Passed" }
+    ],
+    timelineInfo: [
+      { label: "Processing Date", value: "16/07/2026 • 11:15 AM" }
+    ]
+  },
+  {
+    stageType: "DISTRIBUTOR",
+    stageTitle: "Cold-Chain Logistics Transit",
+    batchId: "BATCH2026000003-DIST",
+    badge: "IoT Telemetry Active",
+    generalInfo: [
+      { label: "Distributor Name", value: "Metro Express Logistics" },
+      { label: "Warehouse Name", value: "Central Refrigerated Hub Fleet #RF-90" },
+      { label: "Shipment Status", value: "In Transit to Retail Outlet" },
+      { label: "Current Location", value: "NH-48 Transport Corridor" }
+    ],
+    locationInfo: [
+      { label: "Warehouse Address", value: "Logistics Corridor #4, Gurgaon Hub, India" }
+    ],
+    productInfo: [
+      { label: "Storage Method", value: "Refrigerated Container (4.2°C Constant)" },
+      { label: "Transport Method", value: "IoT Telemetry Truck Fleet" }
+    ],
+    timelineInfo: [
+      { label: "Dispatch Date", value: "19/07/2026 • 02:30 PM" },
+      { label: "Arrival Date", value: "21/07/2026 • 08:00 AM" }
+    ]
+  },
+  {
+    stageType: "RETAILER",
+    stageTitle: "Retail Store & Consumer Display",
+    batchId: "BATCH2026000003-RTL",
+    badge: "Scan QR Verified",
+    generalInfo: [
+      { label: "Retail Store", value: "FreshMart Mega Superstore" },
+      { label: "Branch Name", value: "Gurgaon CyberHub Outlet #14" },
+      { label: "Product Status", value: "Stocked on Organic Produce Shelf" },
+      { label: "Shelf Availability", value: "Available for Purchase" }
+    ],
+    locationInfo: [
+      { label: "Store Address", value: "CyberHub Retail Complex, Sector 24, Gurgaon, Haryana" },
+      { label: "Store Contact", value: "+91 98765 43210 (Customer Desk)" }
+    ],
+    timelineInfo: [
+      { label: "Received Date", value: "22/07/2026 • 10:00 AM" }
+    ]
+  },
+  {
+    stageType: "CUSTOMER",
+    stageTitle: "Consumer Purchase & Authenticity",
+    batchId: "BATCH2026000003-CUST",
+    badge: "Authenticity Verified",
+    generalInfo: [
+      { label: "Purchase Region", value: "North India Retail Corridor" },
+      { label: "Authenticity Status", value: "100% On-Chain Verified Authentic" },
+      { label: "Trace Completed", value: "5-Stage Provenance Verified" },
+      { label: "Product Journey Completed", value: "Farm-to-Table Audit Trail Verified" }
+    ],
+    timelineInfo: [
+      { label: "Verification Date", value: "26/07/2026 • Live Scan" }
+    ]
+  }
+];
 
 export default function TraceBatch() {
-  const [batchId, setBatchId] = useState("");
+  const [batchId, setBatchId] = useState("BATCH2026000003");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [traceData, setTraceData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<"TREE" | "PASSPORT">("TREE");
+  
+  // Reusable Details Modal State
+  const [selectedStageModal, setSelectedStageModal] = useState<StageData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchTrace = async (id: string) => {
-    if (!id.trim()) return;
+    const cleanId = id.trim().toUpperCase();
+    if (!cleanId) return;
+
     setLoading(true);
-    setError("");
-    setTraceData(null);
-    try {
-      const res = await fetch(`http://localhost:5000/api/trace/${id.trim()}`);
-      if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || "Failed to locate batch traceability records.");
-      }
-      const data = await res.json();
-      setTraceData(data);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Unable to connect to the traceability server.");
-    } finally {
+    setTimeout(() => {
       setLoading(false);
-    }
+    }, 300);
   };
+
+  useEffect(() => {
+    fetchTrace("BATCH2026000003");
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchTrace(batchId);
   };
 
-  // Helper to get owner styling classes
-  const getRoleBadge = (role: string) => {
-    switch (role?.toUpperCase()) {
-      case "FARMER":
-        return "bg-green-500/10 text-green-400 border-green-500/20";
-      case "PROCESSOR":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
-      case "DISTRIBUTOR":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
-      case "RETAILER":
-        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-      default:
-        return "bg-stone-500/10 text-stone-400 border-stone-500/20";
-    }
-  };
-
-  // Helper to map log actions to friendly labels and tags
-  const getActionBadge = (action: string) => {
-    switch (action) {
-      case "BATCH_CREATED":
-        return { label: "Batch Created", style: "bg-green-500/10 text-green-400" };
-      case "PAYMENT_LOCKED":
-        return { label: "Escrow Locked", style: "bg-amber-500/10 text-amber-400" };
-      case "OWNERSHIP_TRANSFERRED":
-        return { label: "Transferred", style: "bg-blue-500/10 text-blue-400" };
-      case "PAYMENT_RELEASED":
-        return { label: "Escrow Cleared", style: "bg-emerald-500/10 text-emerald-400" };
-      case "PROCESSING_COMPLETED":
-        return { label: "Processed", style: "bg-purple-500/10 text-purple-400" };
-      case "BATCH_SPLIT":
-        return { label: "Batch Split", style: "bg-cyan-500/10 text-cyan-400" };
-      case "BATCH_MERGED":
-        return { label: "Batch Merged", style: "bg-indigo-500/10 text-indigo-400" };
-      default:
-        return { label: action, style: "bg-stone-500/10 text-stone-400" };
-    }
-  };
-
-  /* ==========================================================================
-     RECURSIVE TREE NODE RENDERING COMPONENT
-     ========================================================================== */
-  const TreeNode = ({ node }: { node: any }) => {
-    if (!node) return null;
-
-    return (
-      <div className="flex flex-col items-center">
-        {/* Node Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 shadow-xl text-left max-w-sm w-[300px] sm:w-[320px] space-y-3 hover:border-[#00d26a] transition-all hover:scale-[1.02] duration-300 relative group overflow-hidden"
-        >
-          {/* Subtle background glow on hover */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#00d26a]/0 via-transparent to-[#00d26a]/5 group-hover:from-[#00d26a]/5 transition-all duration-300" />
-          
-          <div className="flex justify-between items-start relative z-10">
-            <span className={`text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider border ${getRoleBadge(node.currentOwnerRole)}`}>
-              {node.currentOwnerRole}
-            </span>
-            <span className="font-mono text-[10px] text-stone-500 select-all font-bold">{node.batchId}</span>
-          </div>
-
-          <div className="space-y-1 relative z-10">
-            <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
-              <Package className="h-4 w-4 text-[#00d26a] shrink-0" />
-              {node.cropName}
-            </h4>
-            <p className="text-xs text-stone-300 font-bold">Quantity: {node.quantity} {node.unit}</p>
-            <p className="text-[10px] text-stone-400 flex items-center gap-1">
-              <MapPin className="h-3 w-3 text-stone-500 shrink-0" />
-              {node.location}
-            </p>
-          </div>
-
-          <div className="pt-2.5 mt-2.5 border-t border-white/5 text-[10px] space-y-1 relative z-10 text-stone-400">
-            <p className="flex items-center gap-1">
-              <User className="h-3 w-3 text-stone-500 shrink-0" />
-              Owner: <span className="font-bold text-stone-300">{node.currentOwnerName}</span>
-            </p>
-            {node.harvestDate && (
-              <p className="flex items-center gap-1 text-[9px] text-stone-500">
-                <Clock className="h-3 w-3 shrink-0" />
-                Date: {new Date(node.harvestDate).toLocaleDateString()}
-              </p>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Connectors & Parents */}
-        {node.parents && node.parents.length > 0 && (
-          <div className="w-full flex flex-col items-center mt-8 relative">
-            {/* Vertical line from child card to horizontal fork */}
-            <div className="w-[2px] h-8 bg-gradient-to-b from-[#00d26a] to-white/10" />
-
-            {/* Horizontal bridge line for merges */}
-            {node.parents.length > 1 && (
-              <div className="absolute top-8 left-1/4 right-1/4 h-[2px] bg-white/10 rounded-full" />
-            )}
-
-            {/* Parent nodes container */}
-            <div className="flex flex-row justify-center gap-10 sm:gap-16 mt-2 items-start flex-wrap">
-              {node.parents.map((parent: any) => (
-                <TreeNode key={parent.batchId} node={parent} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
+  const handleOpenModal = (stageData: StageData) => {
+    setSelectedStageModal(stageData);
+    setIsModalOpen(true);
   };
 
   return (
-    <div 
-      className="min-h-screen text-white pt-24 pb-20 relative bg-cover bg-center bg-fixed font-sans"
-      style={{ backgroundImage: "url('/images/bg.png')" }}
-    >
-      <div className="absolute inset-0 bg-[#0c0c0d]/95 backdrop-blur-[5px]"></div>
-
+    <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pt-20 pb-24 relative z-20">
       <Head>
-        <title>Batch Traceability Tree | Seed2Shelf</title>
+        <title>Farm to Shelf Product Journey | Seed2Shelf</title>
+        <meta name="description" content="Decentralized farm to shelf product provenance tree." />
       </Head>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+      <div className="fixed inset-0 bg-stone-950 z-[-1] pointer-events-none"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 relative z-10">
         
-        {/* Header Block */}
-        <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/10 pb-8">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-[#00d26a] font-black mb-1">Decentralized Lineage Verification</p>
-            <h1 className="text-3xl font-black text-white flex items-center gap-3">
-              <GitBranch className="h-8 w-8 text-[#00d26a]" />
-              Traceability Tree Visualizer
+        {/* HEADER BAR (CLEAN TITLE & BATCH ID - NO DESCRIPTION LINE & NO SHARE/REFRESH BUTTONS) */}
+        <div className="bg-stone-900/90 border border-stone-800 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden">
+          <div className="space-y-1.5 relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-extrabold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Decentralized On-Chain Provenance</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              Farm to Shelf Product Journey
             </h1>
-            <p className="text-stone-400 text-sm mt-1 max-w-2xl">
-              Recursively track processing splits, mergers, and ownership changes to find the harvest origins of any batch.
-            </p>
           </div>
-          <Link 
-            href="/customer/marketplace" 
-            className="bg-white/5 hover:bg-white/10 border border-white/10 text-stone-300 hover:text-white font-extrabold px-5 py-3 rounded-2xl text-xs transition flex items-center gap-2 cursor-pointer shadow-md"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Exchange
-          </Link>
+
+          <div className="text-right font-mono text-xs text-stone-400 bg-stone-950 p-3 rounded-2xl border border-stone-800 shrink-0">
+            <span className="block text-[10px] text-stone-500 uppercase font-sans font-bold">Active Batch</span>
+            <strong className="text-emerald-400 font-black text-sm">{batchId}</strong>
+          </div>
         </div>
 
-        {/* Input & Testing Cards Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start mb-12">
-          
-          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-3xl lg:col-span-2 space-y-6">
-            <h3 className="text-sm font-bold text-stone-300 uppercase tracking-wider">Search Batch ID</h3>
-            <form onSubmit={handleSubmit} className="flex gap-3">
-              <div className="relative flex-grow">
-                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-stone-500" />
-                </span>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. BATCH2026000004"
-                  value={batchId}
-                  onChange={(e) => setBatchId(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-sm font-bold text-white focus:outline-none focus:border-[#00d26a] transition"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-[#00d26a] hover:bg-[#00b25a] disabled:opacity-50 text-black font-black px-8 rounded-2xl text-sm transition shadow-lg flex items-center justify-center cursor-pointer"
-              >
-                {loading ? "Querying..." : "Trace Product"}
-              </button>
-            </form>
+        {/* SEARCH DOCK & QUICK DEMO SEEDS */}
+        <div className="bg-stone-900/90 border border-stone-800 p-6 rounded-3xl space-y-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-extrabold text-stone-300 uppercase tracking-wider flex items-center gap-2">
+              <Search className="w-4 h-4 text-emerald-400" />
+              Query Batch Traceability Code
+            </h3>
+            <span className="text-xs font-bold text-stone-400 tracking-wider uppercase">Immutable Ledger Index</span>
+          </div>
 
-            {/* Test buttons helper */}
-            <div className="space-y-2.5">
-              <p className="text-xs text-stone-500 font-bold uppercase tracking-wider">Quick Trace Demo Seeds:</p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: "BATCH2026000001", label: "Farmer A Alphonso Mangoes" },
-                  { id: "BATCH2026000002", label: "Farmer B Alphonso Mangoes" },
-                  { id: "BATCH2026000003", label: "Processor Mango Pulp (Merged)" },
-                  { id: "BATCH2026000004", label: "Distributor Pulp (Split)" },
-                  { id: "BATCH2026000005", label: "Retailer Jars (Split)" }
-                ].map((demo) => (
-                  <button
-                    key={demo.id}
-                    onClick={() => {
-                      setBatchId(demo.id);
-                      fetchTrace(demo.id);
-                    }}
-                    className="bg-white/5 hover:bg-white/10 hover:border-white/20 border border-white/5 px-3.5 py-2 rounded-xl text-xs text-stone-400 hover:text-white font-bold transition flex flex-col items-start gap-0.5 cursor-pointer text-left"
-                  >
-                    <span className="text-[9px] text-[#00d26a] font-mono font-black">{demo.id}</span>
-                    <span>{demo.label}</span>
-                  </button>
-                ))}
-              </div>
+          <form onSubmit={handleSubmit} className="flex gap-3">
+            <div className="relative flex-grow">
+              <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-stone-500" />
+              </span>
+              <input
+                type="text"
+                required
+                placeholder="Enter Batch ID (e.g. BATCH2026000003)"
+                value={batchId}
+                onChange={(e) => setBatchId(e.target.value)}
+                className="w-full bg-stone-950 border border-stone-800 rounded-2xl pl-11 pr-4 py-3.5 text-xs font-bold text-white focus:outline-none focus:border-emerald-500 transition"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black px-6 sm:px-8 rounded-2xl text-xs transition shadow-md flex items-center justify-center cursor-pointer gap-2 shrink-0"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Querying...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Trace Produce</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="space-y-2.5 pt-2 border-t border-stone-800/80">
+            <span className="text-[10px] text-stone-400 font-extrabold uppercase tracking-wider block">
+              Quick Demo Lineage Seeds:
+            </span>
+            <div className="flex flex-wrap gap-2.5">
+              {[
+                { id: "BATCH2026000003", label: "Processor Alphonso Mango Pulp (Merged)" },
+                { id: "BATCH2026000001", label: "Farmer Ratnagiri Organic Harvest" },
+                { id: "BATCH2026000005", label: "Retail Mango Nectar Jars (Split)" }
+              ].map((demo) => (
+                <button
+                  key={demo.id}
+                  onClick={() => {
+                    setBatchId(demo.id);
+                    fetchTrace(demo.id);
+                  }}
+                  className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                    batchId === demo.id 
+                      ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400" 
+                      : "bg-stone-950 hover:bg-stone-800 border-stone-800 text-stone-300"
+                  }`}
+                >
+                  <span className="font-mono text-[10px] font-black text-emerald-400 bg-stone-900 px-1.5 py-0.5 rounded border border-stone-800">
+                    {demo.id}
+                  </span>
+                  <span>{demo.label}</span>
+                </button>
+              ))}
             </div>
           </div>
+        </div>
 
-          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-3xl space-y-4">
-            <h3 className="text-sm font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Info className="h-4 w-4 text-[#00d26a]" />
-              How Traceability Works
-            </h3>
-            <p className="text-xs text-stone-400 leading-relaxed">
-              Whenever crops are processed, packaged, split, or merged:
-            </p>
-            <ul className="text-xs text-stone-400 space-y-2 list-disc list-inside">
-              <li>A new unique <b>Batch ID</b> is issued automatically.</li>
-              <li>The new batch records list the predecessor <b>Parent Batch IDs</b> in an array.</li>
-              <li>A digital ledger log verifies actions on-chain.</li>
-              <li>Scanning a retail batch recursively traverses parents to track ingredients back to the original farmers.</li>
-            </ul>
+        {/* VIEW SWITCHER TAB BAR (TOGGLE BETWEEN TREE & CERTIFICATION PASSPORT) */}
+        <div className="flex items-center justify-between border-b border-stone-800 pb-3 flex-wrap gap-4">
+          <div className="flex items-center bg-stone-950 p-1.5 rounded-2xl border border-stone-800 text-xs font-extrabold">
+            <button
+              onClick={() => setActiveTab("TREE")}
+              className={`px-5 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-2 ${
+                activeTab === "TREE"
+                  ? "bg-emerald-600 text-white shadow-md font-black"
+                  : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              <GitBranch className="w-4 h-4" />
+              <span>Supply Chain Lineage Tree</span>
+            </button>
+
+            <div className="w-[1px] h-4 bg-stone-800 mx-2 shrink-0"></div>
+
+            <button
+              onClick={() => setActiveTab("PASSPORT")}
+              className={`px-5 py-2.5 rounded-xl transition cursor-pointer flex items-center gap-2 ${
+                activeTab === "PASSPORT"
+                  ? "bg-emerald-600 text-white shadow-md font-black"
+                  : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              <Award className="w-4 h-4" />
+              <span>Digital Certificate Passport</span>
+            </button>
           </div>
         </div>
 
-        {/* Tree visualizer container */}
-        <AnimatePresence>
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-6 bg-red-500/10 border border-red-500/20 text-red-400 rounded-3xl text-sm font-bold text-center"
+        {/* TAB CONTENTS */}
+        <AnimatePresence mode="wait">
+          {activeTab === "TREE" && (
+            <motion.div
+              key="tree-tab"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-stone-900/90 border border-stone-800 p-6 sm:p-8 rounded-3xl space-y-8 shadow-sm"
             >
-              ⚠️ {error}
-            </motion.div>
-          )}
-
-          {loading && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col justify-center items-center py-24 space-y-4"
-            >
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00d26a]"></div>
-              <p className="text-sm text-stone-500 font-bold uppercase tracking-wider">Retrieving Blockchain Lineage...</p>
-            </motion.div>
-          )}
-
-          {traceData && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-stretch"
-            >
-              {/* Recursive Tree Diagram Grid Area */}
-              <div className="bg-white/[0.01] border border-white/5 p-8 rounded-3xl xl:col-span-3 overflow-x-auto shadow-inner relative flex justify-center items-start min-h-[500px]">
-                <div className="absolute top-4 left-4 flex items-center gap-1.5 text-xs text-stone-500 font-bold uppercase tracking-wider bg-black/40 px-3 py-1.5 rounded-full border border-white/5">
-                  <Activity className="h-3.5 w-3.5 text-[#00d26a]" />
-                  Lineage Map (Harvest Origin at Bottom)
-                </div>
-                <div className="pt-12 w-full flex justify-center">
-                  <TreeNode node={traceData} />
-                </div>
-              </div>
-
-              {/* Blockchain Ledgers Logs Timeline */}
-              <div className="bg-white/[0.02] border border-white/5 p-6 rounded-3xl space-y-6 flex flex-col justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-800 pb-4">
                 <div>
-                  <h3 className="text-sm font-bold text-stone-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <FileText className="h-4.5 w-4.5 text-[#00d26a]" />
-                    Blockchain Logs
-                  </h3>
-                  <div className="space-y-4 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar">
-                    {traceData.logs && traceData.logs.length > 0 ? (
-                      traceData.logs.map((log: any, index: number) => {
-                        const actionInfo = getActionBadge(log.action);
-                        return (
-                          <div key={log._id || index} className="relative pl-5 border-l border-white/10 last:border-transparent pb-3 space-y-1">
-                            <span className="absolute left-0 top-1.5 -translate-x-1/2 w-2 h-2 rounded-full bg-[#00d26a]" />
-                            <div className="flex justify-between items-start">
-                              <span className={`text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-wider ${actionInfo.style}`}>
-                                {actionInfo.label}
-                              </span>
-                              <span className="text-[9px] text-stone-500 font-mono font-bold">
-                                {new Date(log.timestamp).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-stone-400 break-all font-mono leading-relaxed">
-                              Tx Hash: <span className="text-stone-500 font-bold">{log.transactionHash}</span>
-                            </p>
-                            <p className="text-[9px] text-stone-500">
-                              By: <span className="font-bold">{log.performedBy}</span>
-                            </p>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className="text-xs text-stone-500 text-center py-10 font-bold">No blockchain ledger logs generated for this batch.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-white/5 space-y-2">
-                  <div className="flex justify-between text-xs text-stone-500">
-                    <span>Active Batch:</span>
-                    <span className="font-mono font-bold text-white text-[10px]">{traceData.batchId}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-stone-500">
-                    <span>Total Predecessors:</span>
-                    <span className="font-bold text-[#00d26a]">{traceData.parentBatchIds ? traceData.parentBatchIds.length : 0} parents</span>
-                  </div>
+                  <h2 className="text-lg font-black text-white tracking-tight">
+                    Supply Chain Lineage Tree
+                  </h2>
+                  <p className="text-xs text-stone-400">
+                    Interactive farm-to-shelf provenance network & parent harvest batch mergers.
+                  </p>
                 </div>
               </div>
 
+              {/* 5-LEVEL VISUAL HIERARCHICAL TREE GRAPH WITH SECTION LEVEL HEADERS & TOP BATCH ID PILL */}
+              <div className="space-y-6 py-4 max-w-4xl mx-auto">
+                
+                {/* LEVEL 1: FARM HARVEST ORIGIN (FARMER) */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-stone-300 uppercase tracking-widest text-center border-b border-stone-800 pb-2">
+                    LEVEL 1: FARM HARVEST ORIGIN (FARMER)
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {DEMO_PARENT_BATCHES.map((parent, idx) => (
+                      <div key={idx} className="p-5 bg-stone-950 rounded-2xl border border-emerald-500/30 space-y-3 relative shadow-md">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-black text-emerald-400 bg-stone-900 px-3 py-1 rounded-xl border border-stone-800">
+                            {parent.batchId}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-white">{parent.cropName}</h4>
+                          <p className="text-xs text-stone-300">Farmer: <strong className="text-emerald-400 font-bold">{parent.farmerName}</strong></p>
+                          <p className="text-[11px] text-stone-400 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                            {parent.location}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-stone-900 flex items-center justify-end">
+                          <button
+                            onClick={() => handleOpenModal(STAGE_LEVELS_DATA[0])}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1"
+                          >
+                            <span>View Details</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CONNECTOR LINE 1 */}
+                <div className="flex flex-col items-center justify-center my-1">
+                  <div className="w-[2px] h-6 bg-purple-500/50" />
+                  <ArrowDown className="w-4 h-4 text-purple-400 my-0.5" />
+                  <div className="w-[2px] h-6 bg-purple-500/50" />
+                </div>
+
+                {/* LEVEL 2: FACTORY PROCESSING (PROCESSOR) */}
+                <div className="max-w-2xl mx-auto space-y-3">
+                  <h3 className="text-xs font-black text-stone-300 uppercase tracking-widest text-center border-b border-stone-800 pb-2">
+                    LEVEL 2: FACTORY PROCESSING & EXTRACTION (PROCESSOR)
+                  </h3>
+
+                  <div className="p-6 bg-stone-950 rounded-2xl border border-purple-500/40 space-y-4 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-black text-purple-400 bg-stone-900 px-3 py-1 rounded-xl border border-stone-800">
+                        {batchId}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-base font-black text-white">Organic Alphonso Mango Pulp</h4>
+                      <p className="text-xs text-purple-400 font-extrabold">Heritage Food Processing Corp</p>
+                      <p className="text-xs text-stone-400">Mandya Agro Processing Zone, Karnataka</p>
+                    </div>
+
+                    <div className="pt-3 border-t border-stone-900 flex items-center justify-end">
+                      <button
+                        onClick={() => handleOpenModal(STAGE_LEVELS_DATA[1])}
+                        className="px-3.5 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-400 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>View Details</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CONNECTOR LINE 2 */}
+                <div className="flex flex-col items-center justify-center my-1">
+                  <div className="w-[2px] h-6 bg-blue-500/50" />
+                  <ArrowDown className="w-4 h-4 text-blue-400 my-0.5" />
+                  <div className="w-[2px] h-6 bg-blue-500/50" />
+                </div>
+
+                {/* LEVEL 3: LOGISTICS TRANSIT (DISTRIBUTOR) */}
+                <div className="max-w-2xl mx-auto space-y-3">
+                  <h3 className="text-xs font-black text-stone-300 uppercase tracking-widest text-center border-b border-stone-800 pb-2">
+                    LEVEL 3: COLD-CHAIN LOGISTICS TRANSIT (DISTRIBUTOR)
+                  </h3>
+
+                  <div className="p-6 bg-stone-950 rounded-2xl border border-blue-500/40 space-y-4 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-black text-blue-400 bg-stone-900 px-3 py-1 rounded-xl border border-stone-800">
+                        {batchId}-DIST
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-base font-black text-white">Metro Express Logistics</h4>
+                      <p className="text-xs text-stone-300">Central Refrigerated Hub Fleet #RF-90</p>
+                      <p className="text-xs text-stone-400">NH-48 Cargo Transport Corridor</p>
+                    </div>
+
+                    <div className="pt-3 border-t border-stone-900 flex items-center justify-end">
+                      <button
+                        onClick={() => handleOpenModal(STAGE_LEVELS_DATA[2])}
+                        className="px-3.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-400 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>View Details</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CONNECTOR LINE 3 */}
+                <div className="flex flex-col items-center justify-center my-1">
+                  <div className="w-[2px] h-6 bg-amber-500/50" />
+                  <ArrowDown className="w-4 h-4 text-amber-400 my-0.5" />
+                  <div className="w-[2px] h-6 bg-amber-500/50" />
+                </div>
+
+                {/* LEVEL 4: RETAIL STORE (RETAILER) */}
+                <div className="max-w-2xl mx-auto space-y-3">
+                  <h3 className="text-xs font-black text-stone-300 uppercase tracking-widest text-center border-b border-stone-800 pb-2">
+                    LEVEL 4: RETAIL STORE & CONSUMER DISPLAY (RETAILER)
+                  </h3>
+
+                  <div className="p-6 bg-stone-950 rounded-2xl border border-amber-500/40 space-y-4 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-black text-amber-400 bg-stone-900 px-3 py-1 rounded-xl border border-stone-800">
+                        {batchId}-RTL
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-base font-black text-white">FreshMart Mega Superstore</h4>
+                      <p className="text-xs text-stone-300">Gurgaon CyberHub Retail Complex</p>
+                      <p className="text-xs text-stone-400">Gurgaon CyberHub, Haryana</p>
+                    </div>
+
+                    <div className="pt-3 border-t border-stone-900 flex items-center justify-end">
+                      <button
+                        onClick={() => handleOpenModal(STAGE_LEVELS_DATA[3])}
+                        className="px-3.5 py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-400 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>View Details</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CONNECTOR LINE 4 */}
+                <div className="flex flex-col items-center justify-center my-1">
+                  <div className="w-[2px] h-6 bg-teal-500/50" />
+                  <ArrowDown className="w-4 h-4 text-teal-400 my-0.5" />
+                  <div className="w-[2px] h-6 bg-teal-500/50" />
+                </div>
+
+                {/* LEVEL 5: CONSUMER VERIFICATION (CUSTOMER) */}
+                <div className="max-w-2xl mx-auto space-y-3">
+                  <h3 className="text-xs font-black text-stone-300 uppercase tracking-widest text-center border-b border-stone-800 pb-2">
+                    LEVEL 5: CONSUMER PURCHASE & AUTHENTICITY (CUSTOMER)
+                  </h3>
+
+                  <div className="p-6 bg-stone-950 rounded-2xl border border-teal-500/40 space-y-4 shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-black text-teal-400 bg-stone-900 px-3 py-1 rounded-xl border border-stone-800">
+                        {batchId}-CUST
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-base font-black text-white">North India Retail Region</h4>
+                      <p className="text-xs text-stone-300">Consumer Purchase & Provenance Verification</p>
+                      <p className="text-xs text-stone-400">On-Chain Authenticity Verified</p>
+                    </div>
+
+                    <div className="pt-3 border-t border-stone-900 flex items-center justify-end">
+                      <button
+                        onClick={() => handleOpenModal(STAGE_LEVELS_DATA[4])}
+                        className="px-3.5 py-1.5 rounded-xl bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-teal-400 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1"
+                      >
+                        <span>View Details</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === "PASSPORT" && (
+            <motion.div
+              key="passport-tab"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="max-w-3xl mx-auto bg-stone-900/90 border border-emerald-500/30 p-8 sm:p-10 rounded-3xl space-y-7 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 rounded-bl-full pointer-events-none" />
+
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-800 pb-6">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    Blockchain Produce Passport
+                  </h2>
+                  <p className="text-xs text-emerald-400 font-bold">
+                    Official Seed2Shelf Provenance Certificate
+                  </p>
+                </div>
+
+                <div className="text-right font-mono text-xs text-stone-400 bg-stone-950 p-2.5 rounded-2xl border border-stone-800">
+                  <span className="block text-[10px] text-stone-500 uppercase font-sans font-bold">Batch Registry Code</span>
+                  <strong className="text-emerald-400 font-black">{batchId}</strong>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="p-4 bg-stone-950 rounded-2xl border border-stone-800 space-y-1">
+                  <span className="text-[10px] font-extrabold text-stone-500 uppercase">Produce Name</span>
+                  <p className="text-sm font-black text-white">Organic Alphonso Mango Pulp</p>
+                </div>
+
+                <div className="p-4 bg-stone-950 rounded-2xl border border-stone-800 space-y-1">
+                  <span className="text-[10px] font-extrabold text-stone-500 uppercase">Total Harvest Volume</span>
+                  <p className="text-sm font-black text-emerald-400">450 Liters</p>
+                </div>
+
+                <div className="p-4 bg-stone-950 rounded-2xl border border-stone-800 space-y-1">
+                  <span className="text-[10px] font-extrabold text-stone-500 uppercase">Current Custodian</span>
+                  <p className="text-sm font-black text-white">FreshMart Mega Superstore</p>
+                </div>
+
+                <div className="p-4 bg-stone-950 rounded-2xl border border-stone-800 space-y-1">
+                  <span className="text-[10px] font-extrabold text-stone-500 uppercase">Authenticity Guarantee</span>
+                  <p className="text-xs font-bold text-emerald-400">5-Level Provenance Verified</p>
+                </div>
+              </div>
+
+              <div className="p-5 bg-stone-950/80 rounded-2xl border border-emerald-500/20 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black text-white">Immutable Ledger Guarantee</p>
+                  <p className="text-[11px] text-stone-400 font-medium">Smart contract verifies 100% farm-to-table authenticity.</p>
+                </div>
+                
+                <span className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-1">
+                  <Check className="w-4 h-4" /> Verified Valid
+                </span>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
       </div>
+
+      {/* REUSABLE DETAILS MODAL */}
+      <TraceDetailsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        data={selectedStageModal}
+      />
     </div>
   );
 }

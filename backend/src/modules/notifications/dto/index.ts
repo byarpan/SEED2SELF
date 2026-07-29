@@ -1,0 +1,2 @@
+// notifications dto index
+export {};

@@ -1,223 +1,102 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { prisma } from "../../../lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
+
+const EXPRESS_BACKEND_URL = process.env.EXPRESS_BACKEND_URL || "http://localhost:5000";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
   const userId = id as string;
-
   const session = await getServerSession(req, res, authOptions);
 
-  // 1. GET Request
+  // 1. GET Request: Proxy to Express Backend
   if (req.method === "GET") {
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
+      const expressRes = await fetch(`${EXPRESS_BACKEND_URL}/api/v1/farmer/profile/${userId}`);
+      if (expressRes.ok) {
+        const expressData = await expressRes.json();
+        const payload = expressData.data || expressData;
+        const u = payload.user || payload;
+        const a = payload.address || {};
+        const k = payload.kyc || {};
 
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Check if requester is self or admin
-      const isSelfOrAdmin = session && (session.user.id === userId || session.user.role === "ADMIN");
-
-      const ratingAgg = await prisma.rating.aggregate({
-        _avg: { value: true },
-        where: { revieweeId: userId }
-      });
-
-      const averageRating = ratingAgg._avg.value || null;
-
-      const ratings = await prisma.rating.findMany({
-        where: { revieweeId: userId },
-        include: {
-          reviewer: {
-            select: {
-              id: true,
-              name: true,
-              role: true,
-              profilePhoto: true,
-            }
-          }
-        },
-        orderBy: {
-          createdAt: "desc"
-        }
-      });
-
-      if (isSelfOrAdmin) {
-        // Return full profile including private fields
         return res.status(200).json({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          walletAddress: user.walletAddress,
-          profilePhoto: user.profilePhoto,
-          farmerId: user.farmerId,
-          processorId: user.processorId,
-          mobileNumber: user.mobileNumber,
-          dob: user.dob,
-          gender: user.gender,
-          permanentAddress: user.permanentAddress,
-          state: user.state,
-          district: user.district,
-          village: user.village,
-          pinCode: user.pinCode,
-          farmName: user.farmName,
-          farmLocation: user.farmLocation,
-          landArea: user.landArea,
-          mainCrops: user.mainCrops,
-          farmingType: user.farmingType,
-          regDate: user.regDate || user.createdAt,
-          aadhaarNumber: user.aadhaarNumber,
-          aadhaarFront: user.aadhaarFront,
-          aadhaarBack: user.aadhaarBack,
-          kycStatus: user.kycStatus,
-          verificationDate: user.verificationDate,
-          rejectionReason: user.rejectionReason,
-          createdAt: user.createdAt,
-          averageRating,
-          ratings
-        });
-      } else {
-        // Return public profile only (mask sensitive info)
-        return res.status(200).json({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          walletAddress: user.walletAddress,
-          profilePhoto: user.profilePhoto,
-          farmerId: user.farmerId,
-          processorId: user.processorId,
-          farmName: user.farmName,
-          farmLocation: user.farmLocation,
-          mainCrops: user.mainCrops,
-          farmingType: user.farmingType,
-          regDate: user.regDate || user.createdAt,
-          kycStatus: user.kycStatus,
-          createdAt: user.createdAt,
-          averageRating,
-          ratings
+          id: u._id || userId,
+          name: u.fullName || u.name || "",
+          email: u.email || "",
+          role: u.role || "FARMER",
+          farmerId: u.farmerId || null,
+          processorId: u.processorId || null,
+          mobileNumber: u.phone || null,
+          dob: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().split("T")[0] : null,
+          gender: u.gender || null,
+          permanentAddress: a.addressLine || null,
+          village: a.village || null,
+          district: a.district || null,
+          state: a.state || null,
+          pinCode: a.pinCode || null,
+          profilePhoto: u.profilePhoto || null,
+          aadhaarNumber: k.aadhaarNumber || null,
+          aadhaarFront: k.frontDocument?.url || k.frontImage || null,
+          aadhaarBack: k.backDocument?.url || k.backImage || null,
+          kycStatus: k.verificationStatus || u.verificationStatus || "Pending Verification",
         });
       }
+
+      return res.status(expressRes.status).json({ message: "User not found" });
     } catch (error) {
-      console.error("Fetch profile error:", error);
-      return res.status(500).json({ message: "Error fetching user" });
+      console.error("GET Profile proxy error:", error);
+      return res.status(500).json({ message: "Error fetching user profile from Express backend" });
     }
   }
 
-  // 2. PUT Request
+  // 2. PUT Request: Proxy to Express Backend
   if (req.method === "PUT") {
     if (!session) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const isSelfOrAdmin = session.user.id === userId || session.user.role === "ADMIN";
-    if (!isSelfOrAdmin) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-
     try {
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const {
-        name,
-        mobileNumber,
-        dob,
-        gender,
-        permanentAddress,
-        state,
-        district,
-        village,
-        pinCode,
-        farmName,
-        farmLocation,
-        landArea,
-        mainCrops,
-        farmingType,
-        profilePhoto,
-        aadhaarNumber,
-        aadhaarFront,
-        aadhaarBack,
-        submitKyc,
-        walletAddress // keep compatibility for wallet binding
-      } = req.body;
-
-      // Input Validations
-      if (name !== undefined && name.trim() === "") {
-        return res.status(400).json({ message: "Name cannot be empty" });
-      }
-
-      if (mobileNumber !== undefined && mobileNumber !== "" && !/^\d{10}$/.test(mobileNumber)) {
-        return res.status(400).json({ message: "Mobile number must be a 10-digit numeric value" });
-      }
-
-      if (pinCode !== undefined && pinCode !== "" && !/^\d{6}$/.test(pinCode)) {
-        return res.status(400).json({ message: "PIN code must be a 6-digit numeric value" });
-      }
-
-      if (gender !== undefined && gender !== "" && !["Male", "Female", "Other"].includes(gender)) {
-        return res.status(400).json({ message: "Gender must be Male, Female, or Other" });
-      }
-
-      // Build update query payload
-      const updateData: any = {};
-
-      if (walletAddress !== undefined) updateData.walletAddress = walletAddress;
-      if (name !== undefined) updateData.name = name;
-      if (mobileNumber !== undefined) updateData.mobileNumber = mobileNumber;
-      if (dob !== undefined) updateData.dob = dob;
-      if (gender !== undefined) updateData.gender = gender;
-      if (permanentAddress !== undefined) updateData.permanentAddress = permanentAddress;
-      if (state !== undefined) updateData.state = state;
-      if (district !== undefined) updateData.district = district;
-      if (village !== undefined) updateData.village = village;
-      if (pinCode !== undefined) updateData.pinCode = pinCode;
-      if (farmName !== undefined) updateData.farmName = farmName;
-      if (farmLocation !== undefined) updateData.farmLocation = farmLocation;
-      if (landArea !== undefined) updateData.landArea = landArea ? parseFloat(landArea) : null;
-      if (mainCrops !== undefined) updateData.mainCrops = mainCrops;
-      if (farmingType !== undefined) updateData.farmingType = farmingType;
-      if (profilePhoto !== undefined) updateData.profilePhoto = profilePhoto;
-
-      // Handle KYC Submission fields
-      if (submitKyc) {
-        // If already verified, do not allow modifying Aadhaar
-        if (user.kycStatus === "Verified") {
-          return res.status(400).json({ message: "KYC is already verified and locked." });
-        }
-
-        if (!aadhaarNumber || !/^\d{12}$/.test(aadhaarNumber)) {
-          return res.status(400).json({ message: "Aadhaar number must be a 12-digit numeric value" });
-        }
-
-        if (!aadhaarFront || !aadhaarBack) {
-          return res.status(400).json({ message: "Aadhaar front and back documents are required" });
-        }
-
-        updateData.aadhaarNumber = aadhaarNumber;
-        updateData.aadhaarFront = aadhaarFront;
-        updateData.aadhaarBack = aadhaarBack;
-        updateData.kycStatus = "Pending Verification";
-        updateData.rejectionReason = null; // Clear rejection reason on resubmission
-      }
-
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: updateData,
+      const expressRes = await fetch(`${EXPRESS_BACKEND_URL}/api/v1/farmer/profile/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.body)
       });
 
-      return res.status(200).json(updatedUser);
+      if (expressRes.ok) {
+        const expressData = await expressRes.json();
+        const payload = expressData.data || expressData;
+        const u = payload.user || payload;
+        const a = payload.address || {};
+        const k = payload.kyc || {};
+
+        return res.status(200).json({
+          id: u._id || userId,
+          name: u.fullName || u.name || req.body.name,
+          email: u.email || session.user.email,
+          role: u.role || "FARMER",
+          farmerId: u.farmerId || null,
+          mobileNumber: u.phone || req.body.mobileNumber,
+          dob: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().split("T")[0] : req.body.dob,
+          gender: u.gender || req.body.gender,
+          permanentAddress: a.addressLine || req.body.permanentAddress,
+          village: a.village || req.body.village,
+          district: a.district || req.body.district,
+          state: a.state || req.body.state,
+          pinCode: a.pinCode || req.body.pinCode,
+          profilePhoto: u.profilePhoto || req.body.profilePhoto,
+          aadhaarNumber: k.aadhaarNumber || req.body.aadhaarNumber,
+          aadhaarFront: k.frontDocument?.url || req.body.aadhaarFront,
+          aadhaarBack: k.backDocument?.url || req.body.aadhaarBack,
+          kycStatus: k.verificationStatus || u.verificationStatus || "Pending Verification",
+        });
+      }
+
+      const errData = await expressRes.json().catch(() => ({ message: "Failed to update profile" }));
+      return res.status(expressRes.status).json(errData);
     } catch (error) {
-      console.error("Update profile error:", error);
-      return res.status(500).json({ message: "Error updating user profile" });
+      console.error("PUT Profile proxy error:", error);
+      return res.status(500).json({ message: "Error updating profile via Express backend" });
     }
   }
 

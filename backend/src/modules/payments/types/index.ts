@@ -1,0 +1,2 @@
+// payments types index
+export {};

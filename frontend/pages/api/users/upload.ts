@@ -1,10 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
-import fs from "fs";
-import path from "path";
 
-// Disable default body parser to allow larger base64 payloads if needed (e.g., 5mb)
+const EXPRESS_BACKEND_URL = process.env.EXPRESS_BACKEND_URL || "http://localhost:5000";
+
 export const config = {
   api: {
     bodyParser: {
@@ -30,42 +29,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: "Missing file or type parameter" });
     }
 
-    // Validate type
     const isKycType = type.startsWith("aadhaar") || type.includes("kyc") || type === "pan" || type === "document";
-    const allowedTypes = ["profile", "aadhaar_front", "aadhaar_back", "aadhaar", "kyc", "pan", "document"];
-    if (!allowedTypes.includes(type) && !isKycType) {
-      return res.status(400).json({ message: "Invalid upload type" });
-    }
+    const section = isKycType ? "kyc" : "profile";
+    const userRole = (session?.user?.role || "FARMER").toLowerCase();
 
-    // Parse base64 string
+    // 1. Convert Base64 payload to FormData buffer for Express upload
     const match = file.match(/^data:image\/(\w+);base64,(.+)$/);
     if (!match) {
       return res.status(400).json({ message: "Invalid image format. Must be base64 data URI." });
     }
 
     const ext = match[1];
-    const data = match[2];
-    const buffer = Buffer.from(data, "base64");
+    const base64Data = match[2];
+    const fileBuffer = Buffer.from(base64Data, "base64");
 
-    // Define upload directory based on type
-    const subFolder = isKycType ? "kyc" : type === "profile" ? "profile" : "";
-    const uploadDir = subFolder ? path.join(process.cwd(), "public", "uploads", subFolder) : path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer], { type: `image/${ext}` });
+    formData.append("file", blob, `${type}.${ext}`);
+    formData.append("userId", session.user.id);
+    formData.append("role", userRole);
+    if (isKycType) {
+      formData.append("side", type.includes("back") ? "back" : "front");
     }
 
-    // Generate unique file name
-    const filename = `${type}-${session.user.id}-${Date.now()}.${ext}`;
-    const filePath = path.join(uploadDir, filename);
+    const endpoint = isKycType ? "/api/v1/media/upload/kyc" : "/api/v1/media/upload/profile";
+    const expressRes = await fetch(`${EXPRESS_BACKEND_URL}${endpoint}`, {
+      method: "POST",
+      body: formData,
+    });
 
-    // Save file
-    fs.writeFileSync(filePath, buffer);
+    if (expressRes.ok) {
+      const expressData = await expressRes.json();
+      return res.status(200).json({
+        url: expressData.data?.secure_url || expressData.secure_url,
+        publicId: expressData.data?.public_id || expressData.public_id,
+      });
+    }
 
-    // Return the relative URL served by Next.js from public folder
-    const fileUrl = subFolder ? `/uploads/${subFolder}/${filename}` : `/uploads/${filename}`;
-    return res.status(200).json({ url: fileUrl });
+    const errorBody = await expressRes.json().catch(() => ({ message: "Express upload failed" }));
+    return res.status(expressRes.status).json(errorBody);
   } catch (error) {
-    console.error("Upload error:", error);
-    return res.status(500).json({ message: "Failed to upload file" });
+    console.error("Upload proxy error:", error);
+    return res.status(500).json({ message: "Failed to upload file via Express backend" });
   }
 }

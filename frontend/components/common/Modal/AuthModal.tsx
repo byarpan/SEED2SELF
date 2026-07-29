@@ -57,16 +57,7 @@ export default function AuthModal({ isOpen, onClose, initialModeIsSignUp = false
           setError(res.error);
         } else {
           onClose();
-          const sessionRes = await fetch("/api/auth/session");
-          const sessionData = await sessionRes.json();
-          const userRole = sessionData?.user?.role;
-
-          if (userRole === "FARMER") router.push("/farmer");
-          else if (userRole === "PROCESSOR") router.push("/processor/processorHub/dashboard");
-          else if (userRole === "DISTRIBUTOR") router.push("/distributor");
-          else if (userRole === "RETAILER") router.push("/retailer");
-          else if (userRole === "ADMIN") router.push("/admin");
-          else router.push("/");
+          router.push("/");
         }
       } else {
         const signupRes = await authService.signUp({
@@ -89,12 +80,7 @@ export default function AuthModal({ isOpen, onClose, initialModeIsSignUp = false
             setError(res.error);
           } else {
             onClose();
-            if (formData.role === "FARMER") router.push("/farmer");
-            else if (formData.role === "PROCESSOR") router.push("/processor/processorHub/dashboard");
-            else if (formData.role === "DISTRIBUTOR") router.push("/distributor");
-            else if (formData.role === "RETAILER") router.push("/retailer");
-            else if (formData.role === "ADMIN") router.push("/admin");
-            else router.push("/");
+            router.push("/");
           }
         }
       }
@@ -283,6 +269,7 @@ export default function AuthModal({ isOpen, onClose, initialModeIsSignUp = false
                           <option value="DISTRIBUTOR">Distributor</option>
                           <option value="RETAILER">Retailer</option>
                           <option value="CUSTOMER">Customer / Consumer</option>
+                          <option value="ADMIN">Platform Administrator (Admin)</option>
                         </select>
                       </div>
                     </div>

@@ -17,10 +17,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const farmers = await prisma.user.findMany({
         where: {
           role: { in: ["FARMER", "PROCESSOR"] },
-          // Return any stakeholder who has started the KYC process
-          NOT: {
-            kycStatus: null
-          }
+          OR: [
+            { NOT: { kycStatus: null } },
+            { NOT: { aadhaarNumber: null } },
+            { NOT: { aadhaarFront: null } }
+          ]
         },
         orderBy: [
           // Order by Pending Verification first, then others
@@ -74,8 +75,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: "Missing userId or action parameter" });
       }
 
-      if (!["APPROVE", "REJECT"].includes(action)) {
-        return res.status(400).json({ message: "Action must be APPROVE or REJECT" });
+      if (!["APPROVE", "REJECT", "RE_UPLOAD"].includes(action)) {
+        return res.status(400).json({ message: "Action must be APPROVE, REJECT, or RE_UPLOAD" });
       }
 
       const farmer = await prisma.user.findUnique({
@@ -83,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       if (!farmer) {
-        return res.status(404).json({ message: "Farmer profile not found" });
+        return res.status(404).json({ message: "User profile not found" });
       }
 
       const updateData: any = {};
@@ -92,6 +93,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updateData.kycStatus = "Verified";
         updateData.verificationDate = new Date();
         updateData.rejectionReason = null;
+      } else if (action === "RE_UPLOAD") {
+        updateData.kycStatus = "Re-Upload Requested";
+        updateData.rejectionReason = reason || "Please re-upload clear Aadhaar documents.";
+        updateData.verificationDate = null;
       } else {
         if (!reason || reason.trim() === "") {
           return res.status(400).json({ message: "Rejection reason is required" });
@@ -105,6 +110,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { id: userId },
         data: updateData
       });
+
+      try {
+        const { syncUserToMongoDB } = await import("../../../lib/mongodbSync");
+        await syncUserToMongoDB(updatedUser);
+      } catch (syncError) {
+        console.error("Failed to sync KYC decision to MongoDB Atlas:", syncError);
+      }
 
       return res.status(200).json({
         message: `KYC successfully ${action === "APPROVE" ? "Approved" : "Rejected"}`,

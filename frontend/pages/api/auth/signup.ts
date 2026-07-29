@@ -28,6 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let farmerId = null;
     let processorId = null;
+    let adminId = null;
     if (role === "FARMER") {
       const lastFarmer = await prisma.user.findFirst({
         where: {
@@ -66,6 +67,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       processorId = `S2S-PRC-${String(nextNum).padStart(6, '0')}`;
+    } else if (role === "ADMIN") {
+      const lastAdmin = await prisma.user.findFirst({
+        where: {
+          role: "ADMIN",
+          NOT: { adminId: null }
+        },
+        orderBy: {
+          adminId: "desc"
+        }
+      });
+
+      let nextNum = 1;
+      if (lastAdmin && lastAdmin.adminId) {
+        const match = lastAdmin.adminId.match(/S2S-ADM-(\d+)/);
+        if (match) {
+          nextNum = parseInt(match[1]) + 1;
+        }
+      }
+      adminId = `S2S-ADM-${String(nextNum).padStart(6, '0')}`;
     }
 
     const user = await prisma.user.create({
@@ -76,25 +96,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role,
         farmerId,
         processorId,
+        adminId,
         regDate: new Date()
       }
     });
 
     try {
-      await fetch("http://localhost:5000/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email: normalizedEmail,
-          password: hashedPassword,
-          role,
-          farmerId,
-          processorId,
-        }),
-      });
+      const { syncUserToMongoDB } = await import("../../../lib/mongodbSync");
+      await syncUserToMongoDB(user);
     } catch (syncError) {
-      console.error("Failed to sync user to Node backend:", syncError);
+      console.error("Failed to sync user to MongoDB Atlas:", syncError);
     }
 
     return res.status(201).json({ message: "User created successfully", userId: user.id });

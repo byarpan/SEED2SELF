@@ -1,0 +1,2 @@
+// storage dto index
+export {};

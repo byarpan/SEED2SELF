@@ -1,0 +1,2 @@
+// processedInventory constants index
+export {};

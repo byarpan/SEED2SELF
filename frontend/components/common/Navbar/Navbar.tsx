@@ -18,9 +18,14 @@ import {
   ClipboardList, 
   Truck, 
   BarChart3,
+  LayoutDashboard,
+  FileText,
   GitBranch,
   ShieldCheck,
-  Bell
+  Bell,
+  ArrowLeftRight,
+  HelpCircle,
+  Receipt
 } from "lucide-react";
 
 const getHubConfig = (role: string) => {
@@ -30,12 +35,11 @@ const getHubConfig = (role: string) => {
         title: "Farmer Hub",
         basePath: "/farmer/farmerHub/dashboard",
         items: [
-          { name: "Dashboard", url: "/farmer/farmerHub/dashboard", icon: BarChart3 },
+          { name: "Dashboard", url: "/farmer/farmerHub/dashboard", icon: LayoutDashboard },
           { name: "Harvest Hub", url: "/farmer/farmerHub/harvestHub", icon: Sprout },
-          { name: "Inventory", url: "/farmer/farmerHub/inventory", icon: Package },
           { name: "Orders", url: "/farmer/farmerHub/orders", icon: ClipboardList },
           { name: "Shipments", url: "/farmer/farmerHub/shipments", icon: Truck },
-          { name: "Reports", url: "/farmer/farmerHub/reports", icon: BarChart3 },
+          { name: "Reports", url: "/farmer/farmerHub/reports", icon: FileText },
           { name: "Trace Produce", url: "/home/trace-product", icon: GitBranch }
         ]
       };
@@ -44,11 +48,28 @@ const getHubConfig = (role: string) => {
         title: "Processor Hub",
         basePath: "/processor/processorHub/dashboard",
         items: [
-          { name: "Processor Dashboard", hash: "", icon: BarChart3 },
+          { name: "Processor Dashboard", url: "/processor/processorHub/dashboard", icon: LayoutDashboard },
           { name: "Marketplace", url: "/processor/processorHub/marketplace", icon: Sprout },
-          { name: "Processed Inventory", hash: "#inventory", icon: Package },
-          { name: "Incoming Orders", hash: "#orders", icon: ClipboardList },
-          { name: "Trace Lineage", url: "/home/trace-product", icon: GitBranch }
+          { name: "Production Hub", url: "/processor/processorHub/processedInventory", icon: Package },
+          { name: "Incoming Orders", url: "/processor/processorHub/orders", icon: ClipboardList },
+          { name: "Trace Produce", url: "/home/trace-product", icon: GitBranch }
+        ]
+      };
+    case "ADMIN":
+      return {
+        title: "Admin Engine",
+        basePath: "/admin/adminHub/dashboard",
+        items: [
+          { name: "Admin Dashboard", url: "/admin/adminHub/dashboard", icon: LayoutDashboard },
+          { name: "User Management", url: "/admin/adminHub/users", icon: User },
+          { name: "KYC Verification", url: "/admin/adminHub/kyc", icon: ShieldCheck },
+          { name: "Orders & Shipments", url: "/admin/adminHub/orders", icon: ClipboardList },
+          { name: "Payments & Escrow", url: "/admin/adminHub/payments", icon: ArrowLeftRight },
+          { name: "Wallets Monitor", url: "/admin/adminHub/wallets", icon: WalletIcon },
+          { name: "Support Center", url: "/admin/adminHub/support", icon: HelpCircle },
+          { name: "Reports & Complaints", url: "/admin/adminHub/reports", icon: FileText },
+          { name: "Analytics & Charts", url: "/admin/adminHub/analytics", icon: BarChart3 },
+          { name: "System Audit Logs", url: "/admin/adminHub/audit-logs", icon: Receipt }
         ]
       };
     case "DISTRIBUTOR":
@@ -90,22 +111,26 @@ export default function Navbar() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const userRole = session?.user?.role;
-  const isFarmer = userRole === "FARMER";
+  const isFarmer = userRole === "FARMER" || router.pathname.startsWith("/farmer");
+  const isProcessor = userRole === "PROCESSOR" || router.pathname.startsWith("/processor");
+  const isAdmin = userRole === "ADMIN" || router.pathname.startsWith("/admin");
+  const isPortalUser = isFarmer || isProcessor || isAdmin;
   const hubConfig = userRole ? getHubConfig(userRole) : null;
-  const profileId = (session?.user as any)?.farmerId || (session?.user as any)?.processorId || session?.user?.id;
+  const profileId = (session?.user as any)?.farmerId || (session?.user as any)?.processorId || (session?.user as any)?.adminId || session?.user?.id;
   const isAuthenticated = status === "authenticated";
 
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session?.user?.id) {
-      if (session.user.image) {
+    const userId = session?.user?.id || session?.user?.email;
+    if (userId) {
+      if (session?.user?.image) {
         setProfilePhotoUrl(session.user.image);
       }
 
       const fetchUserData = async () => {
         try {
-          const res = await fetch(`/api/users/${session.user.id}`);
+          const res = await fetch(`/api/users/${userId}`);
           if (res.ok) {
             const data = await res.json();
             if (data?.profilePhoto) {
@@ -119,14 +144,46 @@ export default function Navbar() {
 
       fetchUserData();
 
-      const handleProfileUpdate = () => fetchUserData();
+      const handleProfileUpdate = (e: Event) => {
+        const customEvent = e as CustomEvent;
+        if (customEvent?.detail?.profilePhoto) {
+          setProfilePhotoUrl(customEvent.detail.profilePhoto);
+        } else {
+          fetchUserData();
+        }
+      };
+
       window.addEventListener("profileUpdated", handleProfileUpdate);
 
       return () => {
         window.removeEventListener("profileUpdated", handleProfileUpdate);
       };
     }
-  }, [session?.user?.id, session?.user?.image]);
+  }, [session?.user?.id, session?.user?.email, session?.user?.image]);
+
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY < 10) {
+        setIsVisible(true);
+      } else {
+        if (currentScrollY > lastScrollY && currentScrollY > 50) {
+          setIsVisible(false);
+        } else if (currentScrollY < lastScrollY) {
+          setIsVisible(true);
+        }
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   const openModal = (signUp: boolean) => {
     setIsSignUpMode(signUp);
@@ -134,19 +191,22 @@ export default function Navbar() {
   };
 
   const handleLogoutConfirm = async () => {
-    setShowLogoutModal(false);
-    await signOut({ redirect: false });
-    window.location.href = window.location.origin;
+    try {
+      setShowLogoutModal(false);
+      await signOut({ callbackUrl: "/" });
+    } catch (err) {
+      window.location.href = "/";
+    }
   };
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-40 glass-navbar transition-all duration-300">
+      <nav className={`fixed top-0 left-0 right-0 z-50 glass-navbar transition-transform duration-300 ease-in-out ${isVisible ? "translate-y-0" : "-translate-y-full"}`}>
         <div className="w-full px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             
             {/* Far Left Side: SaaS Logo Image */}
-            <Link href={isFarmer ? "/farmer" : "/"} className="flex items-center group select-none">
+            <Link href={isAdmin ? "/admin/adminHub/dashboard" : isFarmer ? "/farmer" : isProcessor ? "/processor" : "/"} className="flex items-center group select-none">
               <img 
                 src="/assets/icons/logo.png" 
                 alt="Seed2Shelf Logo" 
@@ -154,8 +214,8 @@ export default function Navbar() {
               />
             </Link>
 
-            {/* Middle Navigation - Rendered ONLY when authenticated and NOT Farmer */}
-            {isAuthenticated && !isFarmer && (
+            {/* Middle Navigation - Rendered ONLY when authenticated and NOT Portal User */}
+            {isAuthenticated && !isPortalUser && (
               <div className="hidden md:flex items-center gap-6 text-sm font-medium">
                 <Link href="/" className={`transition-colors ${router.pathname === "/" ? "text-[#00d26a]" : "text-stone-300 hover:text-white"}`}>
                   Home
@@ -231,8 +291,8 @@ export default function Navbar() {
             )}
 
             {/* Right Side Controls */}
-            {isFarmer ? (
-              /* Farmer Top Navbar Controls: ONLY Hamburger + Bell + Profile Avatar */
+            {isPortalUser ? (
+              /* Portal Top Navbar Controls: ONLY Hamburger + Bell + Profile Avatar */
               <div className="flex items-center gap-3">
                 
                 {/* Hamburger Menu (Opens Right Drawer) */}
@@ -245,57 +305,31 @@ export default function Navbar() {
                 </button>
 
                 {/* Notification Bell */}
-                <div className="relative">
-                  <button
-                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-stone-300 hover:text-white transition cursor-pointer relative"
-                    title="Notifications"
+                <NotificationBell
+                  userId={session?.user?.id || (session?.user as any)?.farmerId || (session?.user as any)?.processorId || "S2S-USR-000001"}
+                  isOpen={isNotificationOpen}
+                  onToggle={() => setIsNotificationOpen(!isNotificationOpen)}
+                  onClose={() => setIsNotificationOpen(false)}
+                />
+
+                {/* Profile Avatar (For Farmer & Processor ONLY, NOT Admin) */}
+                {!isAdmin && (
+                  <Link
+                    href={isProcessor ? "/processor/profile" : "/farmer/profile"}
+                    className="flex items-center gap-2 p-1 rounded-full border-2 border-[#00d26a]/40 hover:border-[#00d26a] transition cursor-pointer"
+                    title="Profile"
                   >
-                    <Bell className="w-5 h-5 text-stone-300" />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#00d26a] rounded-full animate-pulse"></span>
-                  </button>
-
-                  <AnimatePresence>
-                    {isNotificationOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute right-0 mt-3 w-72 bg-[#141415] border border-white/10 rounded-2xl shadow-2xl p-4 z-50 text-xs"
-                      >
-                        <div className="flex justify-between items-center pb-2 border-b border-white/10 mb-3">
-                          <span className="font-bold text-white">Notifications</span>
-                          <button
-                            onClick={() => setIsNotificationOpen(false)}
-                            className="text-stone-400 hover:text-white"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="py-6 text-center text-stone-400 text-xs italic">
-                          No notifications available.
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Profile Avatar */}
-                <Link
-                  href="/farmer/profile"
-                  className="flex items-center gap-2 p-1 rounded-full border-2 border-[#00d26a]/40 hover:border-[#00d26a] transition cursor-pointer"
-                  title="Farmer Profile"
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#162a1e] to-[#254d33] flex items-center justify-center font-black text-sm text-[#00d26a] overflow-hidden">
-                    {profilePhotoUrl ? (
-                      <img src={profilePhotoUrl} alt="" className="w-full h-full object-cover" />
-                    ) : session?.user?.image ? (
-                      <img src={session.user.image} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      session?.user?.name ? session.user.name[0].toUpperCase() : "F"
-                    )}
-                  </div>
-                </Link>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#162a1e] to-[#254d33] flex items-center justify-center font-black text-sm text-[#00d26a] overflow-hidden">
+                      {profilePhotoUrl ? (
+                        <img src={profilePhotoUrl} alt="" className="w-full h-full object-cover" />
+                      ) : session?.user?.image ? (
+                        <img src={session.user.image} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        session?.user?.name ? session.user.name[0].toUpperCase() : "U"
+                      )}
+                    </div>
+                  </Link>
+                )}
 
               </div>
             ) : (
@@ -311,7 +345,7 @@ export default function Navbar() {
                       <span>Wallet</span>
                     </Link>
 
-                    {profileId && (
+                    {profileId && userRole !== "ADMIN" && (
                       <Link 
                         href={userRole ? `/${userRole.toLowerCase()}/profile` : `/profile/${profileId}`}
                         className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold text-stone-200 transition"
@@ -366,8 +400,8 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Render Farmer Sidebar */}
-      {isFarmer && (
+      {/* Render Portal Sidebar (Farmer & Processor) */}
+      {isPortalUser && (
         <Sidebar
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
@@ -390,33 +424,40 @@ export default function Navbar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLogoutModal(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-stone-950/80 backdrop-blur-xl"
             />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative z-10 matte-glass border border-white/10 p-6 rounded-3xl max-w-sm w-full text-center space-y-4 shadow-2xl"
+              className="relative z-10 bg-stone-900/95 border border-stone-800 p-7 rounded-3xl max-w-sm w-full text-center space-y-5 shadow-2xl shadow-black/80 overflow-hidden"
             >
-              <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center mx-auto">
+              {/* Subtle Ambient Red Glow */}
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="w-14 h-14 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center mx-auto shadow-inner">
                 <LogOut className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-white">Confirm Logout</h3>
-              <p className="text-stone-400 text-xs font-medium">
-                Are you sure you want to log out?
-              </p>
-              <div className="flex gap-3 pt-2">
+              
+              <div className="space-y-1.5">
+                <h3 className="text-xl font-extrabold text-white tracking-tight">Confirm Logout</h3>
+                <p className="text-stone-400 text-xs font-medium leading-relaxed">
+                  Are you sure you want to end your current session?
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
                 <button
                   onClick={() => setShowLogoutModal(false)}
-                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-stone-300 transition cursor-pointer"
+                  className="flex-1 py-3 px-4 bg-stone-950 hover:bg-stone-800 border border-stone-800 rounded-xl text-xs font-bold text-stone-300 transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleLogoutConfirm}
-                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-lg cursor-pointer"
+                  className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black transition shadow-lg shadow-red-950/40 cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  Yes, Log Out
+                  <span>Yes, Log Out</span>
                 </button>
               </div>
             </motion.div>
@@ -424,5 +465,127 @@ export default function Navbar() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+function NotificationBell({ userId, isOpen, onToggle, onClose }: { userId: string; isOpen: boolean; onToggle: () => void; onClose: () => void }) {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/v1/notifications?userId=${userId}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data)) {
+            setNotifications(json.data);
+            setUnreadCount(json.unreadCount || 0);
+          }
+        }
+      } catch (err) {
+        console.warn("Notifications API unreachable, utilizing empty fallback", err);
+      }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      await fetch(`${BACKEND_URL}/api/v1/notifications/read-all?userId=${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+    } catch (err) {
+      console.warn("Failed to mark all as read", err);
+    }
+  };
+
+  const handleMarkSingleRead = async (id: string) => {
+    try {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      await fetch(`${BACKEND_URL}/api/v1/notifications/${id}/read?userId=${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+    } catch (err) {
+      console.warn("Failed to mark single notification as read", err);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-stone-300 hover:text-white transition cursor-pointer relative"
+        title="Notifications"
+      >
+        <Bell className="w-5 h-5 text-stone-300" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse flex items-center justify-center text-[8px] text-black font-black">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute right-0 mt-3 w-80 bg-[#141415] border border-white/10 rounded-2xl shadow-2xl p-4 z-50 text-xs"
+          >
+            <div className="flex justify-between items-center pb-2 border-b border-white/10 mb-3">
+              <span className="font-bold text-white">Notifications{unreadCount > 0 ? ` (${unreadCount} Unread)` : ""}</span>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button onClick={handleMarkAllRead} className="text-[10px] text-emerald-400 font-bold hover:underline cursor-pointer">
+                    Mark All Read
+                  </button>
+                )}
+                <button onClick={onClose} className="text-stone-400 hover:text-white cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              {notifications.length === 0 ? (
+                <div className="py-6 text-center text-stone-400 text-xs italic">
+                  No notifications available.
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={() => handleMarkSingleRead(n.id)}
+                    className={`p-3 rounded-xl border transition cursor-pointer ${
+                      n.isRead ? "bg-stone-950 border-stone-800/80 text-stone-400" : "bg-stone-900 border-emerald-500/30 text-white font-medium hover:border-emerald-500/60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between font-bold text-xs mb-1">
+                      <span>{n.title}</span>
+                      <span className="text-[9px] text-stone-500">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p className="text-[11px] text-stone-300 leading-snug">{n.message}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

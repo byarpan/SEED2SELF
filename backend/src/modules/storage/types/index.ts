@@ -1,0 +1,2 @@
+// storage types index
+export {};

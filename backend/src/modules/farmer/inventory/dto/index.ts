@@ -1,0 +1,2 @@
+// inventory dto index
+export {};

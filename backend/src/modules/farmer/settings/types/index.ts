@@ -1,0 +1,2 @@
+// settings types index
+export {};

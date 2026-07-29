@@ -1,0 +1,2 @@
+// blockchain constants index
+export {};

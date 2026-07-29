@@ -35,11 +35,40 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Invalid credentials");
         }
 
+        let farmerId = user.farmerId || undefined;
+        let processorId = user.processorId || undefined;
+        let adminId = (user as any).adminId || undefined;
+
+        if (user.role === 'FARMER' && !farmerId) {
+          farmerId = `S2S-FRM-${user.id.slice(0, 6).toUpperCase()}`;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { farmerId }
+          }).catch(() => {});
+        } else if (user.role === 'PROCESSOR' && !processorId) {
+          processorId = `S2S-PRC-${user.id.slice(0, 6).toUpperCase()}`;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { processorId }
+          }).catch(() => {});
+        } else if (user.role === 'ADMIN' && !adminId) {
+          adminId = `S2S-ADM-${user.id.slice(0, 6).toUpperCase()}`;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { adminId }
+          }).catch(() => {});
+        }
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role,
+          farmerId,
+          processorId,
+          adminId,
+          distributorId: (user as any).distributorId || undefined,
+          retailerId: (user as any).retailerId || undefined,
           walletAddress: user.walletAddress,
           image: user.profilePhoto
         };
@@ -57,6 +86,11 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.farmerId = (user as any).farmerId;
+        token.processorId = (user as any).processorId;
+        token.adminId = (user as any).adminId;
+        token.distributorId = (user as any).distributorId;
+        token.retailerId = (user as any).retailerId;
         token.walletAddress = user.walletAddress;
         token.picture = user.image || (user as any).profilePhoto;
       }
@@ -75,6 +109,11 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        (session.user as any).farmerId = token.farmerId as string | undefined;
+        (session.user as any).processorId = token.processorId as string | undefined;
+        (session.user as any).adminId = token.adminId as string | undefined;
+        (session.user as any).distributorId = token.distributorId as string | undefined;
+        (session.user as any).retailerId = token.retailerId as string | undefined;
         session.user.walletAddress = token.walletAddress as string | null;
         session.user.image = token.picture as string | null;
       }

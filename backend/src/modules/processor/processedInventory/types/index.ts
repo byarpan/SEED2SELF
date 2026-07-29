@@ -1,0 +1,2 @@
+// processedInventory types index
+export {};

@@ -14,9 +14,12 @@ import {
   X,
   UserCog
 } from "lucide-react";
+import { KYCVerificationStatus, getKycStatusLabel } from "../../../types/kyc";
+import AdvancedGenderPicker from "@/components/common/ProfileControls/AdvancedGenderPicker";
+import AdvancedDatePicker from "@/components/common/ProfileControls/AdvancedDatePicker";
 
 export default function FarmerProfilePage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
   const aadhaarFrontInputRef = useRef<HTMLInputElement>(null);
@@ -32,6 +35,7 @@ export default function FarmerProfilePage() {
 
   // Profile Form Fields
   const [profilePhoto, setProfilePhoto] = useState("");
+  const [profilePhotoPublicId, setProfilePhotoPublicId] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -48,8 +52,10 @@ export default function FarmerProfilePage() {
   // KYC Fields (Aadhaar Only)
   const [aadhaarNumber, setAadhaarNumber] = useState("");
   const [aadhaarFront, setAadhaarFront] = useState("");
+  const [aadhaarFrontPublicId, setAadhaarFrontPublicId] = useState("");
   const [aadhaarBack, setAadhaarBack] = useState("");
-  const [kycStatus, setKycStatus] = useState("Pending");
+  const [aadhaarBackPublicId, setAadhaarBackPublicId] = useState("");
+  const [kycStatus, setKycStatus] = useState<string>(KYCVerificationStatus.PENDING);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -76,7 +82,7 @@ export default function FarmerProfilePage() {
             id: session.user.id,
             name: session.user.name || "",
             email: session.user.email || "",
-            farmerId: (session.user as any)?.farmerId || "S2S-FRM-000001",
+            farmerId: (session.user as any)?.farmerId || "",
             role: "FARMER"
           };
           setUser(fallbackData);
@@ -91,9 +97,9 @@ export default function FarmerProfilePage() {
   };
 
   const populateForm = (data: any) => {
-    setProfilePhoto(data.profilePhoto || session?.user?.image || "");
-    setName(data.name || session?.user?.name || "");
-    setEmail(data.email || session?.user?.email || "");
+    setProfilePhoto(data.profilePhoto || "");
+    setName(data.name || "");
+    setEmail(data.email || "");
     setMobileNumber(data.mobileNumber || "");
     setDob(data.dob || "");
     setGender(data.gender || "Male");
@@ -107,7 +113,7 @@ export default function FarmerProfilePage() {
     setAadhaarNumber(data.aadhaarNumber || "");
     setAadhaarFront(data.aadhaarFront || "");
     setAadhaarBack(data.aadhaarBack || "");
-    setKycStatus(data.kycStatus || "Pending");
+    setKycStatus(data.kycStatus || KYCVerificationStatus.PENDING);
   };
 
   const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -143,10 +149,17 @@ export default function FarmerProfilePage() {
         const data = await res.json();
         if (type === "profile") {
           setProfilePhoto(data.url);
-          window.dispatchEvent(new Event("profileUpdated"));
-        } else if (type === "aadhaar_front") setAadhaarFront(data.url);
-        else if (type === "aadhaar_back") setAadhaarBack(data.url);
-        setMessage({ type: "success", text: "Image selected and preview ready." });
+          if (data.publicId) setProfilePhotoPublicId(data.publicId);
+          window.dispatchEvent(new CustomEvent("profileUpdated", { detail: { profilePhoto: data.url } }));
+          if (updateSession) updateSession({ image: data.url });
+        } else if (type === "aadhaar_front") {
+          setAadhaarFront(data.url);
+          if (data.publicId) setAadhaarFrontPublicId(data.publicId);
+        } else if (type === "aadhaar_back") {
+          setAadhaarBack(data.url);
+          if (data.publicId) setAadhaarBackPublicId(data.publicId);
+        }
+        setMessage({ type: "success", text: "Image uploaded successfully." });
       }
     } catch (err) {
       setMessage({ type: "success", text: "Image preview loaded." });
@@ -155,6 +168,26 @@ export default function FarmerProfilePage() {
 
   const handleSave = async () => {
     setMessage({ type: "", text: "" });
+
+    console.log("🟢 [FarmerProfile:handleSave] Triggered. Form State Before Submission:", {
+      targetUserId,
+      name,
+      mobileNumber,
+      dob,
+      gender,
+      permanentAddress,
+      village,
+      district,
+      state,
+      pinCode,
+      profilePhoto,
+      profilePhotoPublicId,
+      aadhaarNumber,
+      aadhaarFront,
+      aadhaarFrontPublicId,
+      aadhaarBack,
+      aadhaarBackPublicId
+    });
 
     if (mobileNumber && !/^\d{10}$/.test(mobileNumber)) {
       setMessage({ type: "error", text: "Mobile number must be a 10-digit number" });
@@ -168,36 +201,51 @@ export default function FarmerProfilePage() {
     setSaving(true);
     try {
       if (targetUserId) {
+        const payload = {
+          name,
+          mobileNumber,
+          dob,
+          gender,
+          permanentAddress,
+          village,
+          district,
+          state,
+          pinCode,
+          profilePhoto,
+          profilePhotoPublicId,
+          aadhaarNumber,
+          aadhaarFront,
+          aadhaarFrontPublicId,
+          aadhaarBack,
+          aadhaarBackPublicId,
+          submitKyc: true,
+        };
+
+        console.log(`🟢 [FarmerProfile:handleSave] Sending PUT request to /api/users/${targetUserId} with payload:`, payload);
+
         const res = await fetch(`/api/users/${targetUserId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            mobileNumber,
-            dob,
-            gender,
-            permanentAddress,
-            village,
-            district,
-            state,
-            pinCode,
-            profilePhoto,
-            aadhaarNumber,
-            aadhaarFront,
-            aadhaarBack,
-          })
+          body: JSON.stringify(payload)
         });
+
+        console.log(`🟢 [FarmerProfile:handleSave] Response HTTP Status: ${res.status}`);
 
         if (res.ok) {
           const updated = await res.json();
+          console.log("🟢 [FarmerProfile:handleSave] Response Payload Received:", updated);
           setUser(updated);
           populateForm(updated);
+        } else {
+          const errorData = await res.json().catch(() => ({}));
+          console.error("❌ [FarmerProfile:handleSave] Error Response Received:", errorData);
         }
       }
       setEditMode(false);
-      window.dispatchEvent(new Event("profileUpdated"));
-      setMessage({ type: "success", text: "Profile information updated successfully!" });
+      window.dispatchEvent(new CustomEvent("profileUpdated", { detail: { profilePhoto } }));
+      setMessage({ type: "success", text: "Profile information & KYC documents saved successfully!" });
     } catch (err) {
+      console.error("❌ [FarmerProfile:handleSave] Network or runtime error:", err);
       setEditMode(false);
       setMessage({ type: "success", text: "Profile changes saved locally." });
     } finally {
@@ -216,7 +264,8 @@ export default function FarmerProfilePage() {
       setMessage({ type: "error", text: "Please provide Aadhaar number, front image, and back image for verification." });
       return;
     }
-    setKycStatus("Pending");
+    await handleSave();
+    setKycStatus(KYCVerificationStatus.PENDING);
     setMessage({ type: "success", text: "KYC Aadhaar verification documents submitted for Admin review." });
   };
 
@@ -232,11 +281,14 @@ export default function FarmerProfilePage() {
   }
 
   const farmerId = user?.farmerId || (session?.user as any)?.farmerId || "S2S-FRM-000001";
-  const currentKycStatus = kycStatus || "Pending";
+  const currentKycStatus = kycStatus || KYCVerificationStatus.PENDING;
   const hasRealRating = user && (user.averageRating !== undefined && user.averageRating !== null && user.reviewCount);
 
   return (
-    <div className="min-h-screen relative text-white pt-6 pb-20">
+    <div className="min-h-screen bg-stone-950 relative text-white pt-6 pb-20 z-20">
+      {/* Solid Dark Background Overlay (Matching Wallet Style) */}
+      <div className="fixed inset-0 bg-stone-950 z-[-1] pointer-events-none"></div>
+
       <Head>
         <title>{name || "Farmer Profile"} | Seed2Shelf</title>
       </Head>
@@ -306,10 +358,12 @@ export default function FarmerProfilePage() {
               <div className="text-center md:text-left space-y-2">
                 <div className="flex items-center justify-center md:justify-start gap-2.5 flex-wrap">
                   <h1 className="text-3xl font-black text-white">{name || "Farmer User"}</h1>
-                  <span className="flex items-center gap-1 bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Verified Farmer
-                  </span>
+                  {(currentKycStatus === "Verified" || currentKycStatus === "Approved") && (
+                    <span className="flex items-center gap-1 bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 text-[10px] font-black uppercase px-2.5 py-1 rounded-full">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Verified Farmer
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-center md:justify-start gap-3">
@@ -408,42 +462,17 @@ export default function FarmerProfilePage() {
 
             <div>
               <label className="text-xs text-stone-400 font-bold uppercase block mb-2">Gender</label>
-              {editMode ? (
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d26a] transition [&>option]:bg-stone-900"
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              ) : (
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-semibold text-white">
-                  {gender || "N/A"}
-                </div>
-              )}
+              <AdvancedGenderPicker value={gender} onChange={setGender} editMode={editMode} />
             </div>
 
             <div>
               <label className="text-xs text-stone-400 font-bold uppercase block mb-2">Date of Birth</label>
-              {editMode ? (
-                <input
-                  type="date"
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d26a] transition"
-                />
-              ) : (
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-semibold text-white">
-                  {dob || "N/A"}
-                </div>
-              )}
+              <AdvancedDatePicker value={dob} onChange={setDob} editMode={editMode} label="Date of Birth" />
             </div>
 
             <div>
               <label className="text-xs text-stone-400 font-bold uppercase block mb-2">Farmer ID (Read Only)</label>
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-mono font-bold text-[#00d26a]">
+              <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-bold text-[#00d26a]">
                 {farmerId}
               </div>
             </div>
@@ -553,13 +582,15 @@ export default function FarmerProfilePage() {
               KYC Verification (Aadhaar Only)
             </h2>
             <span className={`text-xs px-3 py-1.5 rounded-full font-black border uppercase tracking-wider ${
-              currentKycStatus === "Approved" || currentKycStatus === "Verified"
+              currentKycStatus && (currentKycStatus.toUpperCase().includes("VERIFIED") || currentKycStatus.toUpperCase().includes("APPROVED"))
                 ? "bg-[#00d26a]/15 text-[#00d26a] border-[#00d26a]/20"
-                : currentKycStatus === "Rejected"
+                : currentKycStatus && currentKycStatus.toUpperCase().includes("REJECT")
                 ? "bg-red-500/15 text-red-400 border-red-500/20"
+                : currentKycStatus && (currentKycStatus.toUpperCase().includes("RE_UPLOAD") || currentKycStatus.toUpperCase().includes("RE-UPLOAD"))
+                ? "bg-amber-500/15 text-amber-400 border-amber-500/20"
                 : "bg-yellow-500/15 text-yellow-400 border-yellow-500/20"
             }`}>
-              {currentKycStatus}
+              {getKycStatusLabel(currentKycStatus)}
             </span>
           </div>
 
@@ -572,10 +603,10 @@ export default function FarmerProfilePage() {
                   value={aadhaarNumber}
                   onChange={(e) => setAadhaarNumber(e.target.value)}
                   placeholder="e.g. 1234 5678 9012"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono focus:outline-none focus:border-[#00d26a] transition"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d26a] transition"
                 />
               ) : (
-                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-mono font-bold text-white">
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-bold text-white">
                   {aadhaarNumber || "Not Provided"}
                 </div>
               )}

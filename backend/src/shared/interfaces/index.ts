@@ -1,0 +1,2 @@
+// Shared interfaces index
+export {};

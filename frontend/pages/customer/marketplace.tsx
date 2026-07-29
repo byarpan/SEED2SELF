@@ -200,47 +200,32 @@ export default function BuyProducts() {
     const upstreamRole = getUpstreamRole(userRole);
 
     try {
-      const res = await fetch("http://localhost:5000/api/products");
+      const res = await fetch("http://localhost:5000/api/v1/processor/marketplace");
       if (res.ok) {
-        const data = await res.json();
+        const result = await res.json();
+        const items = result.data || result;
         
-        // Filter products where status === "AVAILABLE"
-        const mapped = data
-          .filter((p: any) => p.status === "AVAILABLE" && p.quantity > 0)
+        const mapped = (Array.isArray(items) ? items : [])
+          .filter((p: any) => (p.availableVolume > 0 || p.harvestVolume > 0))
           .map((p: any) => ({
-            id: p._id,
-            name: p.cropName,
-            quantity: p.quantity,
-            harvestDate: p.harvestDate,
+            id: p._id || p.id || p.batchId,
+            name: p.cropName || "Organic Harvest",
+            quantity: p.availableVolume ?? p.harvestVolume ?? 0,
+            harvestDate: p.harvestDate ? new Date(p.harvestDate).toLocaleDateString() : "Recent",
             batchId: p.batchId,
-            price: p.pricePerUnit,
+            price: p.sellingPrice || 0,
+            image: p.cropImage || "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=600",
             currentOwner: {
-              id: p.currentOwnerId,
-              name: p.currentOwnerId,
-              role: p.currentOwnerRole
+              id: typeof p.farmerId === 'object' ? (p.farmerId._id || p.farmerId.farmerId) : (p.farmerId || "Farmer"),
+              name: typeof p.farmerId === 'object' && p.farmerId?.fullName ? p.farmerId.fullName : "Registered Farmer",
+              role: "FARMER"
             }
           }));
-
-        // Fetch users to map friendly display names
-        const usersRes = await fetch("http://localhost:5000/api/users");
-        if (usersRes.ok) {
-          const users = await usersRes.json();
-          mapped.forEach((c: any) => {
-            const u = users.find((user: any) => 
-              user.farmerId === c.currentOwner.id || 
-              user.processorId === c.currentOwner.id || 
-              user.id === c.currentOwner.id
-            );
-            if (u) {
-              c.currentOwner.name = u.name;
-            }
-          });
-        }
 
         setCrops(mapped);
       }
     } catch (err) {
-      console.error("Error loading MongoDB product listings:", err);
+      console.error("Error loading marketplace crops:", err);
     } finally {
       setLoading(false);
     }
@@ -629,15 +614,16 @@ export default function BuyProducts() {
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => updateCartQty(item.crop.id, -1, item.crop.quantity)}
+                              onClick={() => updateCartQty(item.crop.id, -5, item.crop.quantity)}
                               className="bg-white/5 hover:bg-white/10 text-white rounded-lg p-2 transition cursor-pointer border border-white/5"
+                              title="Decrease by 5"
                             >
                               <Minus className="h-3 w-3" />
                             </button>
                             <input
                               type="number"
-                              min="0.1"
-                              step="0.1"
+                              min="1"
+                              step="5"
                               max={item.crop.quantity}
                               value={item.requestedQuantity}
                               onChange={e => updateCartQtyInput(item.crop.id, e.target.value, item.crop.quantity)}
@@ -645,8 +631,9 @@ export default function BuyProducts() {
                             />
                             <button
                               type="button"
-                              onClick={() => updateCartQty(item.crop.id, 1, item.crop.quantity)}
+                              onClick={() => updateCartQty(item.crop.id, 5, item.crop.quantity)}
                               className="bg-white/5 hover:bg-white/10 text-white rounded-lg p-2 transition cursor-pointer border border-white/5"
+                              title="Increase by 5"
                             >
                               <Plus className="h-3 w-3" />
                             </button>

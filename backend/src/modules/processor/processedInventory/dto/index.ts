@@ -1,0 +1,2 @@
+// processedInventory dto index
+export {};

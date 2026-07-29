@@ -19,6 +19,7 @@ model User {
   profilePhoto      String?
   farmerId          String?   @unique
   processorId       String?   @unique
+  adminId           String?   @unique
   mobileNumber      String?
   dob               String?
   gender            String?   // 'MALE', 'FEMALE', 'OTHER'

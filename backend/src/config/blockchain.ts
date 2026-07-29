@@ -1,0 +1,2 @@
+// Config: blockchain.ts
+export {};

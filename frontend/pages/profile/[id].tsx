@@ -20,6 +20,8 @@ import {
   UserCog,
   Star
 } from "lucide-react";
+import AdvancedGenderPicker from "@/components/common/ProfileControls/AdvancedGenderPicker";
+import AdvancedDatePicker from "@/components/common/ProfileControls/AdvancedDatePicker";
 
 export default function StakeholderProfile() {
   const router = useRouter();
@@ -279,7 +281,12 @@ export default function StakeholderProfile() {
           farmLocation,
           landArea,
           mainCrops,
-          farmingType
+          farmingType,
+          profilePhoto,
+          aadhaarNumber,
+          aadhaarFront,
+          aadhaarBack,
+          submitKyc: true,
         })
       });
 
@@ -332,8 +339,8 @@ export default function StakeholderProfile() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#141414] flex items-center justify-center text-white font-medium">Loading Profile...</div>;
-  if (!user) return <div className="min-h-screen bg-[#141414] flex items-center justify-center text-white font-medium">User not found</div>;
+  if (loading) return <div className="min-h-screen bg-stone-950 flex items-center justify-center text-white font-medium">Loading Profile...</div>;
+  if (!user) return <div className="min-h-screen bg-stone-950 flex items-center justify-center text-white font-medium">User not found</div>;
 
   const isOwnProfile = session?.user?.id === id;
   const isFarmer = user.role === "FARMER";
@@ -348,12 +355,7 @@ export default function StakeholderProfile() {
 
   const getCannotReviewReason = () => {
     if (!session?.user) return "Log in to leave a review.";
-    if (isOwnProfile) {
-      if (user.role === "FARMER") return "You cannot review your own profile. Your average rating is calculated based on reviews from processors.";
-      if (user.role === "PROCESSOR") return "You cannot review your own profile. Your average rating is calculated based on reviews from distributors.";
-      if (user.role === "DISTRIBUTOR") return "You cannot review your own profile. Your average rating is calculated based on reviews from retailers.";
-      return "You cannot review your own profile.";
-    }
+    if (isOwnProfile) return "You cannot review your own profile.";
     
     if (user.role === "FARMER") return "Only processors are authorized to leave reviews on farmers.";
     if (user.role === "PROCESSOR") return "Only distributors are authorized to leave reviews on processors.";
@@ -365,7 +367,10 @@ export default function StakeholderProfile() {
     : "";
 
   return (
-    <div className="min-h-screen relative text-white pt-10 pb-20">
+    <div className="min-h-screen bg-stone-950 relative text-white pt-10 pb-20 z-20">
+      {/* Solid Dark Background Overlay (Matching Wallet Style) */}
+      <div className="fixed inset-0 bg-stone-950 z-[-1] pointer-events-none"></div>
+
       <Head>
         <title>{user.name}'s Profile | Seed2Shelf</title>
       </Head>
@@ -544,47 +549,26 @@ export default function StakeholderProfile() {
                 </div>
                 <div>
                   <label className="text-xs text-stone-400 font-bold uppercase block mb-2 ml-1">Date of Birth</label>
-                  <input
-                    type="date"
-                    disabled={!editMode}
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d26a] disabled:opacity-60 transition"
-                  />
+                  <AdvancedDatePicker value={dob} onChange={setDob} editMode={editMode} label="Date of Birth" />
                 </div>
                 <div>
                   <label className="text-xs text-stone-400 font-bold uppercase block mb-2 ml-1">Gender</label>
-                  <select
-                    disabled={!editMode}
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d26a] disabled:opacity-60 transition [&>option]:bg-stone-900"
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <AdvancedGenderPicker value={gender} onChange={setGender} editMode={editMode} />
                 </div>
                 {isFarmer && (
                   <div>
                     <label className="text-xs text-stone-400 font-bold uppercase block mb-2 ml-1">Farmer ID (Read Only)</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={user.farmerId || "N/A"}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-stone-500 font-mono focus:outline-none transition cursor-not-allowed"
-                    />
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-bold text-[#00d26a]">
+                      {user.farmerId || "N/A"}
+                    </div>
                   </div>
                 )}
                 {isProcessor && (
                   <div>
                     <label className="text-xs text-stone-400 font-bold uppercase block mb-2 ml-1">Processor ID (Read Only)</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={user.processorId || "N/A"}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-stone-500 font-mono focus:outline-none transition cursor-not-allowed"
-                    />
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-bold text-[#00d26a]">
+                      {user.processorId || "N/A"}
+                    </div>
                   </div>
                 )}
               </div>
@@ -841,7 +825,7 @@ export default function StakeholderProfile() {
                   value={aadhaarNumber}
                   onChange={(e) => setAadhaarNumber(e.target.value)}
                   placeholder="Enter 12 digit numeric value"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d26a] disabled:opacity-60 transition font-mono"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00d26a] disabled:opacity-60 transition"
                 />
               </div>
 

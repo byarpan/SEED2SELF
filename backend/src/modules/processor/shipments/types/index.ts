@@ -1,0 +1,2 @@
+// shipments types index
+export {};

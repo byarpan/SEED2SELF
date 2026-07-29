@@ -1,0 +1,2 @@
+// wallet dto index
+export {};

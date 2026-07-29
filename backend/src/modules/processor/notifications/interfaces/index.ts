@@ -1,0 +1,2 @@
+// notifications interfaces index
+export {};

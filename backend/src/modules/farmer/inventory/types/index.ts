@@ -1,0 +1,2 @@
+// inventory types index
+export {};

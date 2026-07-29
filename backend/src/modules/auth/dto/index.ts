@@ -1,0 +1,2 @@
+// Auth DTO index
+export {};

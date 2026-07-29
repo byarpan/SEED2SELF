@@ -1,0 +1,2 @@
+// wallet interfaces index
+export {};

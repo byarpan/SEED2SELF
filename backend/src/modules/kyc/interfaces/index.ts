@@ -1,0 +1,2 @@
+// kyc interfaces index
+export {};

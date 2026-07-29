@@ -8,6 +8,7 @@ declare module "next-auth" {
       walletAddress: string | null;
       farmerId?: string;
       processorId?: string;
+      adminId?: string;
     } & DefaultSession["user"]
   }
 
@@ -16,6 +17,7 @@ declare module "next-auth" {
     walletAddress: string | null;
     farmerId?: string;
     processorId?: string;
+    adminId?: string;
   }
 }
 
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
     walletAddress: string | null;
     farmerId?: string;
     processorId?: string;
+    adminId?: string;
   }
 }
