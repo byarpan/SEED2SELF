@@ -114,7 +114,9 @@ export default function Navbar() {
   const isFarmer = userRole === "FARMER" || router.pathname.startsWith("/farmer");
   const isProcessor = userRole === "PROCESSOR" || router.pathname.startsWith("/processor");
   const isAdmin = userRole === "ADMIN" || router.pathname.startsWith("/admin");
-  const isPortalUser = isFarmer || isProcessor || isAdmin;
+  const isDistributor = userRole === "DISTRIBUTOR" || router.pathname.startsWith("/distributor");
+  const isRetailer = userRole === "RETAILER" || router.pathname.startsWith("/retailer");
+  const isPortalUser = isFarmer || isProcessor || isAdmin || isDistributor || isRetailer;
   const hubConfig = userRole ? getHubConfig(userRole) : null;
   const profileId = (session?.user as any)?.farmerId || (session?.user as any)?.processorId || (session?.user as any)?.adminId || session?.user?.id;
   const isAuthenticated = status === "authenticated";
@@ -315,7 +317,7 @@ export default function Navbar() {
                 {/* Profile Avatar (For Farmer & Processor ONLY, NOT Admin) */}
                 {!isAdmin && (
                   <Link
-                    href={isProcessor ? "/processor/profile" : "/farmer/profile"}
+                    href={isAdmin ? "/admin" : isProcessor ? "/processor/profile" : isDistributor ? "/distributor/profile" : isRetailer ? "/retailer/profile" : "/farmer/profile"}
                     className="flex items-center gap-2 p-1 rounded-full border-2 border-[#00d26a]/40 hover:border-[#00d26a] transition cursor-pointer"
                     title="Profile"
                   >

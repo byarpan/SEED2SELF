@@ -200,25 +200,25 @@ export default function BuyProducts() {
     const upstreamRole = getUpstreamRole(userRole);
 
     try {
-      const res = await fetch("http://localhost:5000/api/v1/processor/marketplace");
+      const res = await fetch(`/api/crops?isListed=true`);
       if (res.ok) {
         const result = await res.json();
         const items = result.data || result;
         
         const mapped = (Array.isArray(items) ? items : [])
-          .filter((p: any) => (p.availableVolume > 0 || p.harvestVolume > 0))
+          .filter((p: any) => p.quantity > 0)
           .map((p: any) => ({
-            id: p._id || p.id || p.batchId,
-            name: p.cropName || "Organic Harvest",
-            quantity: p.availableVolume ?? p.harvestVolume ?? 0,
+            id: p.id,
+            name: p.name || "Organic Harvest",
+            quantity: p.quantity || 0,
             harvestDate: p.harvestDate ? new Date(p.harvestDate).toLocaleDateString() : "Recent",
             batchId: p.batchId,
-            price: p.sellingPrice || 0,
-            image: p.cropImage || "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=600",
+            price: p.price || 100,
+            image: p.image || "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=600",
             currentOwner: {
-              id: typeof p.farmerId === 'object' ? (p.farmerId._id || p.farmerId.farmerId) : (p.farmerId || "Farmer"),
-              name: typeof p.farmerId === 'object' && p.farmerId?.fullName ? p.farmerId.fullName : "Registered Farmer",
-              role: "FARMER"
+              id: p.currentOwner?.id || p.currentOwnerId || "Owner",
+              name: p.currentOwner?.name || "Registered User",
+              role: p.currentOwner?.role || "FARMER"
             }
           }));
 
@@ -417,6 +417,8 @@ export default function BuyProducts() {
     (crop.batchId && crop.batchId.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const marketplaceTitle = userRole === "DISTRIBUTOR" ? "Distributor Marketplace" : userRole === "RETAILER" ? "Retailer Marketplace" : "Customer Marketplace";
+
   return (
     <div 
       className="min-h-screen text-white pt-24 pb-20 relative bg-cover bg-center bg-fixed font-sans"
@@ -425,7 +427,7 @@ export default function BuyProducts() {
       <div className="absolute inset-0 bg-[#0c0c0d]/90 backdrop-blur-[4px]"></div>
 
       <Head>
-        <title>Customer Marketplace | Seed2Shelf</title>
+        <title>{marketplaceTitle} | Seed2Shelf</title>
       </Head>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
@@ -436,7 +438,7 @@ export default function BuyProducts() {
             <p className="text-xs uppercase tracking-widest text-[#00d26a] font-black mb-1">On-Chain Trade Link</p>
             <h1 className="text-3xl font-black text-white flex items-center gap-3">
               <ShoppingBag className="h-8 w-8 text-[#00d26a]" />
-              Customer Marketplace
+              {marketplaceTitle}
             </h1>
             <p className="text-stone-400 text-sm mt-1 max-w-2xl">
               Browse verified agricultural produce, view blockchain traceability logs, and complete secure escrow purchases.

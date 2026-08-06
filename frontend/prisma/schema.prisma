@@ -20,6 +20,8 @@ model User {
   farmerId          String?   @unique
   processorId       String?   @unique
   adminId           String?   @unique
+  distributorId     String?   @unique
+  retailerId        String?   @unique
   mobileNumber      String?
   dob               String?
   gender            String?   // 'MALE', 'FEMALE', 'OTHER'
@@ -79,6 +81,9 @@ model Crop {
   parentCropId     String?
   parentCrop       Crop?     @relation("CropLineage", fields: [parentCropId], references: [id])
   childCrops       Crop[]    @relation("CropLineage")
+
+  parentCombinations BatchCombination[] @relation("ChildCrop")
+  childCombinations  BatchCombination[] @relation("ParentCrop")
 
   transactions     Transaction[]
   requests         Request[]
@@ -168,4 +173,17 @@ model BatchHistory {
   transactionHash  String?
   
   createdAt        DateTime  @default(now())
+}
+
+model BatchCombination {
+  id           String @id @default(uuid())
+  childCropId  String
+  parentCropId String
+
+  childCrop    Crop   @relation("ChildCrop", fields: [childCropId], references: [id])
+  parentCrop   Crop   @relation("ParentCrop", fields: [parentCropId], references: [id])
+
+  createdAt    DateTime @default(now())
+
+  @@unique([childCropId, parentCropId])
 }

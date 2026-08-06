@@ -46,6 +46,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const userRole = session?.user?.role;
   const isAdmin = userRole === "ADMIN" || router.pathname.startsWith("/admin");
   const isProcessor = userRole === "PROCESSOR" || router.pathname.startsWith("/processor");
+  const isDistributor = userRole === "DISTRIBUTOR" || router.pathname.startsWith("/distributor");
+  const isRetailer = userRole === "RETAILER" || router.pathname.startsWith("/retailer");
 
   const isActive = (path: string) => router.pathname === path;
 
@@ -84,7 +86,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* Drawer Header */}
           <div className="flex items-center justify-between pb-3 border-b border-white/5 px-2">
             <span className="text-xs font-black uppercase tracking-wider text-[#00d26a]">
-              {isAdmin ? "Admin Engine Portal" : isProcessor ? "Processor Navigation" : "Farmer Navigation"}
+              {isAdmin ? "Admin Engine Portal" : isProcessor ? "Processor Navigation" : isDistributor ? "Distributor Navigation" : isRetailer ? "Retailer Navigation" : "Farmer Navigation"}
             </span>
             <button
               onClick={onClose}
@@ -331,6 +333,460 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                           onClick={onClose}
                           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
                             isActive("/processor/processorHub/reports") || isActive("/processor/reports")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Reports</span>
+                        </Link>
+                        <Link
+                          href="/home/trace-product"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/home/trace-product")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <GitBranch className="w-3.5 h-3.5" />
+                          <span>Trace Produce</span>
+                        </Link>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 5. Support */}
+                <Link
+                  href="/support"
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                    isActive("/support")
+                      ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold"
+                      : "text-stone-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <HelpCircle className="w-4 h-4 text-[#00d26a]" />
+                  <span>Support</span>
+                </Link>
+              </>
+            ) : isDistributor ? (
+              /* ==========================================================
+                  DISTRIBUTOR NAVIGATION
+                 ========================================================== */
+              <>
+                {/* 1. Home */}
+                <Link
+                  href="/distributor"
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                    router.pathname === "/distributor"
+                      ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold"
+                      : "text-stone-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Home className="w-4 h-4 text-[#00d26a]" />
+                  <span>Home</span>
+                </Link>
+
+                {/* 2. Profile */}
+                <Link
+                  href="/distributor/profile"
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                    isActive("/distributor/profile")
+                      ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold"
+                      : "text-stone-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <User className="w-4 h-4 text-[#00d26a]" />
+                  <span>Profile</span>
+                </Link>
+
+                {/* 3. Wallet Dropdown */}
+                <div>
+                  <button
+                    onClick={() => setWalletExpanded(!walletExpanded)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-stone-300 hover:text-white hover:bg-white/5 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <WalletIcon className="w-4 h-4 text-[#00d26a]" />
+                      <span>Wallet</span>
+                    </div>
+                    {walletExpanded ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {walletExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="ml-6 pl-2 border-l border-white/10 space-y-1 mt-1"
+                      >
+                        <Link
+                          href="/distributor/wallet"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/wallet")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <WalletIcon className="w-3.5 h-3.5" />
+                          <span>Wallet Balance</span>
+                        </Link>
+                        <Link
+                          href="/distributor/wallet/transactions"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/wallet/transactions")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                          <span>Transactions</span>
+                        </Link>
+                        <Link
+                          href="/distributor/wallet/invoices"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/wallet/invoices")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Invoices</span>
+                        </Link>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 4. Distributor Hub Dropdown */}
+                <div>
+                  <button
+                    onClick={() => setHubExpanded(!hubExpanded)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-stone-300 hover:text-white hover:bg-white/5 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BarChart3 className="w-4 h-4 text-[#00d26a]" />
+                      <span>Distributor Hub</span>
+                    </div>
+                    {hubExpanded ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {hubExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="ml-6 pl-2 border-l border-white/10 space-y-1 mt-1"
+                      >
+                        <Link
+                          href="/distributor/distributorHub/dashboard"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/distributorHub/dashboard")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <LayoutDashboard className="w-3.5 h-3.5" />
+                          <span>Dashboard</span>
+                        </Link>
+                        <Link
+                          href="/distributor/distributorHub/marketplace"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/distributorHub/marketplace")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <Sprout className="w-3.5 h-3.5" />
+                          <span>Marketplace</span>
+                        </Link>
+                        <Link
+                          href="/distributor/distributorHub/supplyHub"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/distributorHub/supplyHub")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <Boxes className="w-3.5 h-3.5" />
+                          <span>Supply Hub</span>
+                        </Link>
+                        <Link
+                          href="/distributor/distributorHub/orders"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/distributorHub/orders")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          <span>Orders</span>
+                        </Link>
+                        <Link
+                          href="/distributor/distributorHub/shipments"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/distributorHub/shipments")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <Truck className="w-3.5 h-3.5" />
+                          <span>Shipments</span>
+                        </Link>
+                        <Link
+                          href="/distributor/distributorHub/reports"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/distributor/distributorHub/reports")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Reports</span>
+                        </Link>
+                        <Link
+                          href="/home/trace-product"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/home/trace-product")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <GitBranch className="w-3.5 h-3.5" />
+                          <span>Trace Produce</span>
+                        </Link>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 5. Support */}
+                <Link
+                  href="/support"
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                    isActive("/support")
+                      ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold"
+                      : "text-stone-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <HelpCircle className="w-4 h-4 text-[#00d26a]" />
+                  <span>Support</span>
+                </Link>
+              </>
+            ) : isRetailer ? (
+              /* ==========================================================
+                  RETAILER NAVIGATION
+                 ========================================================== */
+              <>
+                {/* 1. Home */}
+                <Link
+                  href="/retailer"
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                    router.pathname === "/retailer"
+                      ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold"
+                      : "text-stone-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Home className="w-4 h-4 text-[#00d26a]" />
+                  <span>Home</span>
+                </Link>
+
+                {/* 2. Profile */}
+                <Link
+                  href="/retailer/profile"
+                  onClick={onClose}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
+                    isActive("/retailer/profile")
+                      ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold"
+                      : "text-stone-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <User className="w-4 h-4 text-[#00d26a]" />
+                  <span>Profile</span>
+                </Link>
+
+                {/* 3. Wallet Dropdown */}
+                <div>
+                  <button
+                    onClick={() => setWalletExpanded(!walletExpanded)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-stone-300 hover:text-white hover:bg-white/5 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <WalletIcon className="w-4 h-4 text-[#00d26a]" />
+                      <span>Wallet</span>
+                    </div>
+                    {walletExpanded ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {walletExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="ml-6 pl-2 border-l border-white/10 space-y-1 mt-1"
+                      >
+                        <Link
+                          href="/retailer/wallet"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/wallet")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <WalletIcon className="w-3.5 h-3.5" />
+                          <span>Wallet Balance</span>
+                        </Link>
+                        <Link
+                          href="/retailer/wallet/transactions"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/wallet/transactions")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                          <span>Transactions</span>
+                        </Link>
+                        <Link
+                          href="/retailer/wallet/invoices"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/wallet/invoices")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Invoices</span>
+                        </Link>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* 4. Retailer Hub Dropdown */}
+                <div>
+                  <button
+                    onClick={() => setHubExpanded(!hubExpanded)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-stone-300 hover:text-white hover:bg-white/5 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BarChart3 className="w-4 h-4 text-[#00d26a]" />
+                      <span>Retailer Hub</span>
+                    </div>
+                    {hubExpanded ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                    ) : (
+                      <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {hubExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="ml-6 pl-2 border-l border-white/10 space-y-1 mt-1"
+                      >
+                        <Link
+                          href="/retailer/retailerHub/dashboard"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/retailerHub/dashboard")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <LayoutDashboard className="w-3.5 h-3.5" />
+                          <span>Dashboard</span>
+                        </Link>
+                        <Link
+                          href="/retailer/retailerHub/marketplace"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/retailerHub/marketplace")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <Sprout className="w-3.5 h-3.5" />
+                          <span>Marketplace</span>
+                        </Link>
+                        <Link
+                          href="/retailer/retailerHub/retailHub"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/retailerHub/retailHub")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <Package className="w-3.5 h-3.5" />
+                          <span>Retail Hub</span>
+                        </Link>
+                        <Link
+                          href="/retailer/retailerHub/orders"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/retailerHub/orders")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          <span>Orders</span>
+                        </Link>
+                        <Link
+                          href="/retailer/retailerHub/shipments"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/retailerHub/shipments")
+                              ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
+                              : "text-stone-400 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <Truck className="w-3.5 h-3.5" />
+                          <span>Shipments</span>
+                        </Link>
+                        <Link
+                          href="/retailer/retailerHub/reports"
+                          onClick={onClose}
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition ${
+                            isActive("/retailer/retailerHub/reports")
                               ? "bg-[#00d26a]/15 text-[#00d26a] font-bold"
                               : "text-stone-400 hover:text-white hover:bg-white/5"
                           }`}
