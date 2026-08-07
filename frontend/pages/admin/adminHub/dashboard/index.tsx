@@ -30,12 +30,13 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:500
 
 export default function AdminMainDashboard() {
   const { data: session } = useSession();
-  const adminId = (session?.user as any)?.adminId || "S2S-ADM-000001";
 
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any>(null);
+  const [userViewMode, setUserViewMode] = useState<"OVERALL" | "ROLE_WISE">("OVERALL");
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("FARMER");
 
   const fetchStats = async () => {
     try {
@@ -56,6 +57,11 @@ export default function AdminMainDashboard() {
 
   useEffect(() => {
     fetchStats();
+    // Poll stats every 5 seconds so when new users sign up, metrics automatically increment
+    const interval = setInterval(() => {
+      fetchStats();
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -75,10 +81,28 @@ export default function AdminMainDashboard() {
     }
   };
 
+  const totalEcosystemUsers = stats?.users?.total || (
+    (stats?.users?.farmers || 0) +
+    (stats?.users?.processors || 0) +
+    (stats?.users?.distributors || 0) +
+    (stats?.users?.retailers || 0) +
+    (stats?.users?.customers || 0)
+  );
+
+  const roleCardsData = [
+    { key: "FARMER", label: "Farmers", count: stats?.users?.farmers || 0, desc: "Agricultural Producers", color: "text-emerald-400" },
+    { key: "PROCESSOR", label: "Processors", count: stats?.users?.processors || 0, desc: "Factory & Processing Hubs", color: "text-emerald-400" },
+    { key: "DISTRIBUTOR", label: "Distributors", count: stats?.users?.distributors || 0, desc: "Cold-Chain & Logistics", color: "text-blue-400" },
+    { key: "RETAILER", label: "Retailers", count: stats?.users?.retailers || 0, desc: "Store & Supply Outlets", color: "text-purple-400" },
+    { key: "CUSTOMER", label: "Consumers", count: stats?.users?.customers || 0, desc: "End Buyers & Consumers", color: "text-amber-400" },
+  ];
+
+  const currentRoleCard = roleCardsData.find((card) => card.key === selectedRoleFilter) || roleCardsData[0];
+
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pb-24 pt-6 px-4 sm:px-6 lg:px-8 relative z-20">
       <Head>
-        <title>Admin Engine Dashboard | Seed2Shelf</title>
+        <title>Admin Dashboard | Seed2Shelf</title>
       </Head>
 
       <div className="fixed inset-0 bg-stone-950 z-[-1] pointer-events-none" />
@@ -86,33 +110,23 @@ export default function AdminMainDashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* TOP HEADER */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-800/80 pb-5">
+        <div className="flex items-center justify-between border-b border-stone-800/80 pb-5">
           <div className="flex items-center gap-3.5">
             <div className="p-3 bg-[#00d26a]/10 border border-[#00d26a]/20 rounded-2xl text-[#00d26a] shrink-0 shadow-inner">
               <ShieldCheck className="h-8 w-8" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  Admin Platform Engine
-                </h1>
-                <span className="px-2.5 py-0.5 bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/30 rounded-full text-[10px] font-black uppercase tracking-wider">
-                  {adminId}
-                </span>
-              </div>
-              <p className="text-xs text-stone-400 font-medium">System governance, universal KYC verification, & ecosystem control</p>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Admin Dashboard
+            </h1>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={fetchStats}
-              className="p-2.5 bg-stone-900 hover:bg-stone-800 border border-stone-800 rounded-xl text-stone-300 transition cursor-pointer flex items-center gap-2 text-xs font-bold"
-            >
-              <RefreshCw className={`w-4 h-4 text-[#00d26a] ${loading ? "animate-spin" : ""}`} />
-              <span>Refresh Metrics</span>
-            </button>
-          </div>
+          <button 
+            onClick={fetchStats}
+            title="Refresh Metrics"
+            className="p-2.5 bg-stone-900 hover:bg-stone-800 border border-stone-800 rounded-2xl text-[#00d26a] hover:text-emerald-400 transition cursor-pointer flex items-center justify-center shrink-0 shadow-sm"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </button>
         </div>
 
         {/* GLOBAL ADMIN SEARCH BAR */}
@@ -162,75 +176,90 @@ export default function AdminMainDashboard() {
           )}
         </div>
 
-        {/* METRICS CARDS (EXACT FARMER DASHBOARD UI DESIGN) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          {/* Card 1: Users */}
-          <div className="p-5 bg-stone-900/90 border border-stone-800 rounded-2xl space-y-3 hover:border-[#00d26a]/30 transition duration-300 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-stone-400 uppercase tracking-wider">Ecosystem Users</span>
-              <div className="p-2 bg-stone-950 border border-stone-800 rounded-xl text-[#00d26a]">
-                <Users className="w-4 h-4" />
+        {/* ECOSYSTEM USERS METRICS SECTION */}
+        <div className="bg-stone-900/90 border border-stone-800 rounded-3xl p-6 space-y-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-800/80 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-[#00d26a]/10 border border-[#00d26a]/20 rounded-xl text-[#00d26a]">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-extrabold text-white">Ecosystem Users</h2>
+                <p className="text-xs text-stone-400">Registered ecosystem participants overview</p>
               </div>
             </div>
-            <div>
-              <p className="text-3xl font-extrabold text-white tracking-tight">{stats?.users?.total || 0}</p>
-              <div className="text-[11px] text-stone-400 mt-1 flex flex-wrap gap-2">
-                <span>Farmers: <strong className="text-white">{stats?.users?.farmers || 0}</strong></span>
-                <span>Processors: <strong className="text-white">{stats?.users?.processors || 0}</strong></span>
+
+            {/* TOGGLE VIEW MODES: OVERALL vs ROLE-WISE */}
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              {userViewMode === "ROLE_WISE" && (
+                <select
+                  value={selectedRoleFilter}
+                  onChange={(e) => setSelectedRoleFilter(e.target.value)}
+                  className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00d26a] transition font-bold"
+                >
+                  <option value="FARMER">Farmers</option>
+                  <option value="PROCESSOR">Processors</option>
+                  <option value="DISTRIBUTOR">Distributors</option>
+                  <option value="RETAILER">Retailers</option>
+                  <option value="CUSTOMER">Consumers</option>
+                </select>
+              )}
+
+              <div className="flex items-center gap-1.5 bg-stone-950 p-1 rounded-xl border border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setUserViewMode("OVERALL")}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    userViewMode === "OVERALL"
+                      ? "bg-[#00d26a] text-stone-950 shadow-md"
+                      : "text-stone-400 hover:text-white"
+                  }`}
+                >
+                  Overall Users
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserViewMode("ROLE_WISE")}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    userViewMode === "ROLE_WISE"
+                      ? "bg-[#00d26a] text-stone-950 shadow-md"
+                      : "text-stone-400 hover:text-white"
+                  }`}
+                >
+                  Role-Wise Users
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Card 2: Universal KYC */}
-          <div className="p-5 bg-stone-900/90 border border-stone-800 rounded-2xl space-y-3 hover:border-[#00d26a]/30 transition duration-300 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-stone-400 uppercase tracking-wider">Pending KYC</span>
-              <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
-                <Clock className="w-4 h-4" />
+          {userViewMode === "OVERALL" ? (
+            /* VIEW A: OVERALL USERS SUMMARY */
+            <div className="bg-stone-950/60 border border-stone-800 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block">
+                  Total Active Ecosystem Users
+                </span>
+                <div className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+                  {totalEcosystemUsers}
+                </div>
               </div>
             </div>
-            <div>
-              <p className="text-3xl font-extrabold text-amber-400 tracking-tight">{stats?.kyc?.pending || 0}</p>
-              <div className="text-[11px] text-stone-400 mt-1 flex gap-2">
-                <span>Approved: <strong className="text-emerald-400">{stats?.kyc?.approved || 0}</strong></span>
-                <span>Rejected: <strong className="text-red-400">{stats?.kyc?.rejected || 0}</strong></span>
+          ) : (
+            /* VIEW B: ROLE-WISE SINGLE SELECTED ROLE CARD */
+            <div className="space-y-4">
+              <div className="max-w-md">
+                <div className="p-5 bg-stone-950/60 border border-stone-800 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-stone-400 uppercase">{currentRoleCard.label}</span>
+                    <span className={`text-[11px] font-bold ${currentRoleCard.color}`}>{currentRoleCard.desc}</span>
+                  </div>
+                  <div className="text-4xl font-black text-white block">
+                    {currentRoleCard.count}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Card 3: Active Operations */}
-          <div className="p-5 bg-stone-900/90 border border-stone-800 rounded-2xl space-y-3 hover:border-[#00d26a]/30 transition duration-300 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-stone-400 uppercase tracking-wider">Active Operations</span>
-              <div className="p-2 bg-stone-950 border border-stone-800 rounded-xl text-[#00d26a]">
-                <Truck className="w-4 h-4" />
-              </div>
-            </div>
-            <div>
-              <p className="text-3xl font-extrabold text-white tracking-tight">{stats?.operations?.activeOrders || 0}</p>
-              <div className="text-[11px] text-stone-400 mt-1 flex gap-2">
-                <span>In-Transit Shipments: <strong className="text-white">{stats?.operations?.activeShipments || 0}</strong></span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 4: Escrow & Wallets */}
-          <div className="p-5 bg-stone-900/90 border border-stone-800 rounded-2xl space-y-3 hover:border-[#00d26a]/30 transition duration-300 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-stone-400 uppercase tracking-wider">Locked Escrow</span>
-              <div className="p-2 bg-stone-950 border border-stone-800 rounded-xl text-[#00d26a]">
-                <ArrowLeftRight className="w-4 h-4" />
-              </div>
-            </div>
-            <div>
-              <p className="text-3xl font-extrabold text-[#00d26a] tracking-tight">₹ {(stats?.operations?.totalEscrowLocked || 0).toLocaleString("en-IN")}</p>
-              <div className="text-[11px] text-stone-400 mt-1">
-                <span>Platform Wallet Total: <strong className="text-white">₹ {(stats?.operations?.totalWalletBalance || 0).toLocaleString("en-IN")}</strong></span>
-              </div>
-            </div>
-          </div>
-
+          )}
         </div>
 
         {/* QUICK NAVIGATION GRID (12 ADMIN MODULES) */}
@@ -243,7 +272,7 @@ export default function AdminMainDashboard() {
             <span className="text-xs text-stone-400">Strictly Non-Trading Management</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             
             <Link href="/admin/adminHub/users" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
               <div className="p-2.5 bg-[#00d26a]/10 text-[#00d26a] rounded-xl w-fit">
@@ -254,35 +283,11 @@ export default function AdminMainDashboard() {
             </Link>
 
             <Link href="/admin/adminHub/kyc" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
-              <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl w-fit">
+              <div className="p-2.5 bg-[#00d26a]/10 text-[#00d26a] rounded-xl w-fit">
                 <UserCheck2 className="w-5 h-5" />
               </div>
-              <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">KYC Verification</h3>
+              <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">KYC Management</h3>
               <p className="text-[11px] text-stone-400">Universal KYC verification for Farmers, Processors, Distributors, & Retailers.</p>
-            </Link>
-
-            <Link href="/admin/adminHub/orders" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
-              <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl w-fit">
-                <ClipboardList className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">Orders & Shipments</h3>
-              <p className="text-[11px] text-stone-400">Monitor active orders, dispatch statuses, and supply chain logistics.</p>
-            </Link>
-
-            <Link href="/admin/adminHub/payments" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
-              <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl w-fit">
-                <ArrowLeftRight className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">Payments & Escrow</h3>
-              <p className="text-[11px] text-stone-400">Inspect locked escrow protection funds and payment gateways.</p>
-            </Link>
-
-            <Link href="/admin/adminHub/wallets" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
-              <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl w-fit">
-                <WalletIcon className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">Wallets Monitor</h3>
-              <p className="text-[11px] text-stone-400">Audit user balances, on-chain wallet addresses, & transactions.</p>
             </Link>
 
             <Link href="/admin/adminHub/support" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
@@ -291,22 +296,6 @@ export default function AdminMainDashboard() {
               </div>
               <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">Support Center</h3>
               <p className="text-[11px] text-stone-400">Manage user support tickets, respond to inquiries, & assign priorities.</p>
-            </Link>
-
-            <Link href="/admin/adminHub/reports" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
-              <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl w-fit">
-                <FileText className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">Reports & Complaints</h3>
-              <p className="text-[11px] text-stone-400">Handle reported users, fraud alerts, & supply chain disputes.</p>
-            </Link>
-
-            <Link href="/admin/adminHub/analytics" className="p-4 bg-stone-950/80 hover:bg-stone-900 border border-stone-800 hover:border-[#00d26a]/40 rounded-2xl space-y-2 transition cursor-pointer group">
-              <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl w-fit">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-bold text-white group-hover:text-[#00d26a] transition">Analytics & Charts</h3>
-              <p className="text-[11px] text-stone-400">View real-time ecosystem analytics, user growth, & revenue trends.</p>
             </Link>
 
           </div>

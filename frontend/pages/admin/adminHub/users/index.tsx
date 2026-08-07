@@ -83,31 +83,30 @@ export default function AdminUserManagement() {
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pb-24 pt-6 px-4 sm:px-6 lg:px-8 relative z-20">
       <Head>
-        <title>User Management | Admin Engine | Seed2Shelf</title>
+        <title>User Management | Seed2Shelf</title>
       </Head>
 
       <div className="max-w-7xl mx-auto space-y-7">
         
         {/* HEADER */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-800/80 pb-4">
+        <div className="flex items-center justify-between border-b border-stone-800/80 pb-4">
           <div className="flex items-center gap-3.5">
             <div className="p-3 bg-[#00d26a]/10 border border-[#00d26a]/20 rounded-2xl text-[#00d26a] shrink-0">
               <Users className="h-7 w-7" />
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Universal User Management
+                User Management
               </h1>
-              <p className="text-xs text-stone-400 font-medium">Monitor, search, filter, enable, disable, or suspend user accounts across all roles</p>
             </div>
           </div>
 
           <button 
             onClick={fetchUsers}
-            className="p-2.5 bg-stone-900 hover:bg-stone-800 border border-stone-800 rounded-xl text-stone-300 transition cursor-pointer flex items-center gap-2 text-xs font-bold"
+            title="Refresh Users"
+            className="p-2.5 bg-stone-900 hover:bg-stone-800 border border-stone-800 rounded-2xl text-[#00d26a] hover:text-emerald-400 transition cursor-pointer flex items-center justify-center shrink-0 shadow-sm"
           >
-            <RefreshCw className={`w-4 h-4 text-[#00d26a] ${loading ? "animate-spin" : ""}`} />
-            <span>Refresh Users</span>
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
 

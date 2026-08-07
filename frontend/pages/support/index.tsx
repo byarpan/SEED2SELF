@@ -20,7 +20,8 @@ import {
   Truck,
   Store,
   ShoppingBag,
-  Loader2
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
@@ -189,47 +190,47 @@ export default function SupportPage() {
   const [tickets, setTickets] = useState<any[]>([]);
 
   // Fetch FAQs & Tickets from Backend
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch FAQs
-        const faqRes = await fetch(`${BACKEND_URL}/api/v1/support/faqs?role=${activeRole}`);
-        if (faqRes.ok) {
-          const json = await faqRes.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            setFaqs(json.data.map((f: any) => ({ q: f.question, a: f.answer })));
-          } else {
-            setFaqs(defaultFaqsByRole[activeRole] || defaultFaqsByRole["FARMER"]);
-          }
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch FAQs
+      const faqRes = await fetch(`${BACKEND_URL}/api/v1/support/faqs?role=${activeRole}`);
+      if (faqRes.ok) {
+        const json = await faqRes.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setFaqs(json.data.map((f: any) => ({ q: f.question, a: f.answer })));
+        } else {
+          setFaqs(defaultFaqsByRole[activeRole] || defaultFaqsByRole["FARMER"]);
         }
-
-        // Fetch User Tickets
-        const tckRes = await fetch(`${BACKEND_URL}/api/v1/support/tickets?role=${activeRole}&userId=${userId}`);
-        if (tckRes.ok) {
-          const json = await tckRes.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-            const mapped = json.data.map((t: any) => ({
-              id: t.ticketNumber || t.id,
-              role: t.role,
-              subject: t.subject,
-              category: t.category,
-              priority: t.priority,
-              status: t.status,
-              date: new Date(t.createdAt).toLocaleDateString("en-GB"),
-              response: t.replies && t.replies.length > 0 ? t.replies[t.replies.length - 1].message : "Under review by support specialist."
-            }));
-            setTickets(mapped);
-          }
-        }
-      } catch (err) {
-        console.warn("Backend API offline or unreachable, utilizing local state fallback", err);
-        setFaqs(defaultFaqsByRole[activeRole] || defaultFaqsByRole["FARMER"]);
-      } finally {
-        setIsLoading(false);
       }
-    };
 
+      // Fetch User Tickets
+      const tckRes = await fetch(`${BACKEND_URL}/api/v1/support/tickets?role=${activeRole}&userId=${userId}`);
+      if (tckRes.ok) {
+        const json = await tckRes.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const mapped = json.data.map((t: any) => ({
+            id: t.ticketNumber || t.id,
+            role: t.role,
+            subject: t.subject,
+            category: t.category,
+            priority: t.priority,
+            status: t.status,
+            date: new Date(t.createdAt).toLocaleDateString("en-GB"),
+            response: t.replies && t.replies.length > 0 ? t.replies[t.replies.length - 1].message : "Under review by support specialist."
+          }));
+          setTickets(mapped);
+        }
+      }
+    } catch (err) {
+      console.warn("Backend API offline or unreachable, utilizing local state fallback", err);
+      setFaqs(defaultFaqsByRole[activeRole] || defaultFaqsByRole["FARMER"]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [activeRole, userId]);
 
@@ -321,7 +322,7 @@ export default function SupportPage() {
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pb-24 pt-6 px-4 sm:px-6 lg:px-8 relative z-20">
       <Head>
-        <title>Help Desk & Platform Support | Seed2Shelf</title>
+        <title>Support Center | Seed2Shelf</title>
         <meta name="description" content="Dedicated multi-role platform support, escrow settlement assistance, and FAQs." />
       </Head>
 
@@ -329,27 +330,20 @@ export default function SupportPage() {
 
       <div className="max-w-6xl mx-auto space-y-7">
         
-        {/* HEADER WITH MULTI-ROLE SWITCHER TABS */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-y border-stone-800/80 py-3.5">
+        {/* HEADER WITH MULTI-ROLE SWITCHER TABS & REFRESH ICON */}
+        <div className="flex items-center justify-between border-b border-stone-800/80 pb-4">
           <div className="flex items-center gap-3.5">
-            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-400 shrink-0">
+            <div className="p-2.5 bg-[#00d26a]/10 border border-[#00d26a]/20 rounded-2xl text-[#00d26a] shrink-0">
               <LifeBuoy className="h-7 w-7" />
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                Help Desk & Platform Support
+                Support Center
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {isLoading && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Syncing...</span>
-              </div>
-            )}
-
             {/* SLEEK 5-ROLE SWITCHER PILL TABS */}
             <div className="flex items-center bg-stone-950 p-1 rounded-2xl border border-stone-800 text-xs font-extrabold overflow-x-auto max-w-full">
               {roleOptions.map((opt, idx) => {
@@ -361,7 +355,7 @@ export default function SupportPage() {
                       onClick={() => setActiveRole(opt.key)}
                       className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
                         isSelected
-                          ? "bg-emerald-600 text-white shadow-md font-black"
+                          ? "bg-[#00d26a] text-stone-950 shadow-md font-black"
                           : "text-stone-400 hover:text-stone-200"
                       }`}
                     >
@@ -375,6 +369,13 @@ export default function SupportPage() {
                 );
               })}
             </div>
+
+            <button 
+              onClick={fetchData}
+              title="Refresh Support Center"
+              className="p-2.5 bg-stone-900 hover:bg-stone-800 border border-stone-800 rounded-xl text-stone-400 hover:text-white transition cursor-pointer flex items-center justify-center shrink-0"
+            >
+              <RefreshCw className={`w-4 h-4 text-[#00d26a] ${isLoading ? "animate-spin" : ""}`} />
           </div>
         </div>
 

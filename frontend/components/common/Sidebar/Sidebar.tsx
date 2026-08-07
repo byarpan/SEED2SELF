@@ -113,35 +113,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </Link>
                 <Link href="/admin/adminHub/kyc" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/kyc") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
                   <ShieldCheck className="w-4 h-4 text-[#00d26a]" />
-                  <span>KYC Verification</span>
-                </Link>
-                <Link href="/admin/adminHub/orders" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/orders") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
-                  <ClipboardList className="w-4 h-4 text-[#00d26a]" />
-                  <span>Orders & Shipments</span>
-                </Link>
-                <Link href="/admin/adminHub/payments" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/payments") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
-                  <ArrowLeftRight className="w-4 h-4 text-[#00d26a]" />
-                  <span>Payments & Escrow</span>
-                </Link>
-                <Link href="/admin/adminHub/wallets" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/wallets") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
-                  <WalletIcon className="w-4 h-4 text-[#00d26a]" />
-                  <span>Wallets Monitor</span>
+                  <span>KYC Management</span>
                 </Link>
                 <Link href="/admin/adminHub/support" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/support") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
                   <HelpCircle className="w-4 h-4 text-[#00d26a]" />
                   <span>Support Center</span>
-                </Link>
-                <Link href="/admin/adminHub/reports" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/reports") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
-                  <FileText className="w-4 h-4 text-[#00d26a]" />
-                  <span>Reports & Complaints</span>
-                </Link>
-                <Link href="/admin/adminHub/analytics" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/analytics") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
-                  <BarChart3 className="w-4 h-4 text-[#00d26a]" />
-                  <span>Analytics & Charts</span>
-                </Link>
-                <Link href="/admin/adminHub/audit-logs" onClick={onClose} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${isActive("/admin/adminHub/audit-logs") ? "bg-[#00d26a]/15 text-[#00d26a] border border-[#00d26a]/20 font-bold" : "text-stone-300 hover:text-white hover:bg-white/5"}`}>
-                  <Receipt className="w-4 h-4 text-[#00d26a]" />
-                  <span>System Audit Logs</span>
                 </Link>
               </>
             ) : isProcessor ? (
